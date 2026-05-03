@@ -778,3 +778,127 @@ body {
     transform: scale(1) translateY(0);
   }
 }
+
+/* ── Responsive Overrides ────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  /* Tablet & Mobile: Collapsible sidebar, floating right panel */
+  .sidebar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 300;
+    transform: translateX(-100%);
+    width: 280px;
+    max-width: 85vw;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 290;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-smooth);
+  }
+
+  .sidebar-overlay.mobile-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .app-mobile-menu-btn {
+    display: flex !important;
+  }
+
+  .app-right-panel {
+    position: absolute;
+    right: 0;
+    top: 52px;
+    bottom: 0;
+    z-index: 200;
+    width: 320px;
+    max-width: 100vw;
+    border-left: 1px solid var(--border-primary);
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@media (max-width: 768px) {
+  /* Mobile: Stack vertically, bottom icon rail */
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .app-icon-rail {
+    flex-direction: row;
+    width: 100%;
+    height: 56px;
+    padding: 0 16px;
+    overflow-x: auto;
+    border-right: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    order: 3;
+    justify-content: space-around;
+  }
+
+  .app-icon-rail__btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+  }
+
+  .app-icon-rail > div {
+    width: 1px !important;
+    height: 24px !important;
+    margin: 0 8px !important;
+  }
+
+  .app-main {
+    order: 1;
+    border-radius: 0;
+  }
+
+  /* Adjust top bar actions */
+  .app-top-bar__actions {
+    gap: 8px;
+    padding-right: 8px;
+  }
+
+  .app-top-bar__panel-btn {
+    padding: 0 8px !important;
+  }
+
+  .app-top-bar__panel-btn span {
+    display: none; /* Hide text on small screens */
+  }
+
+  /* Adjust TipTap editor font sizes using clamp() */
+  .collab-editor-content {
+    padding: 16px;
+    font-size: clamp(14px, 2vw, 16px);
+  }
+
+  .collab-editor-content h1 {
+    font-size: clamp(1.5rem, 5vw, 2rem);
+  }
+  
+  .collab-editor-content h2 {
+    font-size: clamp(1.25rem, 4vw, 1.5rem);
+  }
+
+  /* Toolbar Share text hiding */
+  #toolbar-share {
+    padding: 0 8px !important;
+  }
+  #toolbar-share svg {
+    margin-right: 0 !important;
+  }
+}

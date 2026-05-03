@@ -36,6 +36,8 @@ interface SidebarProps {
   onlineUsers?: { id: string; name: string; color: string }[];
   projectMembers?: { uid: string; name: string; role: 'Guest' | 'Owner' | 'Can Edit' }[];
   viewingStudentId?: string | null;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 type SortOrder = 'manual' | 'updated' | 'alpha-asc' | 'alpha-desc';
@@ -50,7 +52,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   onToggleCollapse,
   onlineUsers = [],
   projectMembers = [],
-  viewingStudentId = null
+  viewingStudentId = null,
+  isMobileOpen = false,
+  onCloseMobile
 }) => {
   const { currentNoteId, setCurrentNoteId, setActiveDocTitle, currentProjectId, setCurrentProjectId, setSidebarSelectionId, currentDocType, setCurrentDocType } = useAppStore();
   const { state: { user } } = useAuth();
@@ -704,8 +708,10 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   }, [allDocs, expandedFolders, currentNoteId, sortOrder, handleOpenDoc, editingDocId, editingDocTitle, commitRename, dropIndicator, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDragOver, handleDrop]);
 
   return (
-    <div className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''}`}>
-      <div className="sidebar__brand">
+    <>
+      <div className={`sidebar-overlay ${isMobileOpen ? 'mobile-open' : ''}`} onClick={onCloseMobile} />
+      <div className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
+        <div className="sidebar__brand">
         <img src={logo} alt="Coollab Logo" className="sidebar__logo" />
         {!collapsed && <span className="sidebar__brand-name">Coollab</span>}
       </div>
@@ -996,5 +1002,6 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         </div>
       )}
     </div>
+    </>
   );
 });

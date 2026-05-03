@@ -20,6 +20,7 @@ import {
   Link2,
   Loader2,
   Maximize2,
+  Menu,
   Search,
   Sliders,
   Sparkles,
@@ -233,6 +234,7 @@ export function App() {
   }, [user?.uid, currentNoteId, username, color, userPhoto]);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
   const handleEditorReady = useCallback((editorInstance: Editor) => {
     setEditor(editorInstance)
@@ -1228,12 +1230,21 @@ export function App() {
         onlineUsers={onlineCollaborators}
         projectMembers={projectMembers}
         viewingStudentId={viewingStudentId}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main content */}
       <div className="app-main" style={{ borderRadius: 0 }}>
         {/* Title bar + sync indicator */}
         <div className="app-top-bar">
+          <button
+            className="app-mobile-menu-btn"
+            onClick={() => setIsMobileSidebarOpen(true)}
+            style={{ display: 'none', background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '8px', cursor: 'pointer', marginLeft: '8px' }}
+          >
+            <Menu size={20} />
+          </button>
           <Toolbar
             title={activeDocTitle}
             onTitleChange={handleUpdateTitle}
