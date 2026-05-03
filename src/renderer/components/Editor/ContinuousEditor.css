@@ -1,0 +1,332 @@
+/* ── Continuous Editor (Obsidian-style) ─────────────────────────────────── */
+
+.continuous-editor-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--surface-base, #1a1a2e);
+  scroll-behavior: smooth;
+}
+
+/* Scrollbar styling */
+.continuous-editor-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.continuous-editor-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.continuous-editor-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+
+.continuous-editor-wrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* The writing canvas — centered, readable width */
+.continuous-editor-canvas {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 48px 32px 200px;
+  min-height: 100%;
+}
+
+/* ── ProseMirror Content Area ──────────────────────────────────────────── */
+
+.coollab-continuous-editor {
+  outline: none;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--text-primary, #e8eaf0);
+  caret-color: var(--accent-primary, #7c3aed);
+}
+
+/* ── Typography ────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor p {
+  margin-bottom: 0.75rem;
+}
+
+.coollab-continuous-editor h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary, #e8eaf0);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.5rem;
+}
+
+.coollab-continuous-editor h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary, #e8eaf0);
+  line-height: 1.35;
+}
+
+.coollab-continuous-editor h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+.coollab-continuous-editor h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary, #94a3b8);
+}
+
+/* ── Links ─────────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor a,
+.coollab-continuous-editor .editor-link {
+  color: #7c6bf0;
+  text-decoration: underline;
+  text-decoration-color: rgba(124, 107, 240, 0.35);
+  text-underline-offset: 2px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.coollab-continuous-editor a:hover,
+.coollab-continuous-editor .editor-link:hover {
+  text-decoration-color: #7c6bf0;
+  color: #a78bfa;
+}
+
+/* ── Code ──────────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor pre {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.coollab-continuous-editor pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary, #e8eaf0);
+}
+
+.coollab-continuous-editor code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  color: #f0a0a0;
+}
+
+/* ── Horizontal Rule ───────────────────────────────────────────────────── */
+
+.coollab-continuous-editor hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 32px 0;
+}
+
+/* ── Lists ─────────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor ul,
+.coollab-continuous-editor ol {
+  padding-left: 24px;
+  margin-bottom: 0.75rem;
+}
+
+.coollab-continuous-editor li {
+  margin-bottom: 0.25rem;
+}
+
+.coollab-continuous-editor li::marker {
+  color: var(--accent-primary, #7c3aed);
+}
+
+/* ── Task Lists ────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.coollab-continuous-editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.coollab-continuous-editor ul[data-type="taskList"] li input[type="checkbox"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--text-faint, #4a4d5e);
+  border-radius: 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 3px;
+  transition: all 0.12s ease;
+  position: relative;
+}
+
+.coollab-continuous-editor ul[data-type="taskList"] li input[type="checkbox"]:checked {
+  background: var(--accent-primary, #7c3aed);
+  border-color: var(--accent-primary, #7c3aed);
+}
+
+.coollab-continuous-editor ul[data-type="taskList"] li input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── Blockquote ────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor blockquote {
+  border-left: 3px solid var(--accent-primary, #7c3aed);
+  padding-left: 16px;
+  margin: 12px 0;
+  color: var(--text-secondary, #94a3b8);
+  font-style: italic;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor table {
+  border-collapse: collapse;
+  margin: 16px 0;
+  width: 100%;
+}
+
+.coollab-continuous-editor th,
+.coollab-continuous-editor td {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 12px;
+  min-width: 80px;
+  vertical-align: top;
+}
+
+.coollab-continuous-editor th {
+  background: rgba(255, 255, 255, 0.04);
+  font-weight: 600;
+  text-align: left;
+}
+
+.coollab-continuous-editor td {
+  background: transparent;
+}
+
+/* ── Images ─────────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+/* ── Placeholder ───────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-faint, #4a4d5e);
+  pointer-events: none;
+  height: 0;
+}
+
+/* ── Selection ─────────────────────────────────────────────────────────── */
+
+.coollab-continuous-editor .ProseMirror-selectednode {
+  outline: 2px solid var(--accent-primary, #7c3aed);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── Collaboration Cursors ─────────────────────────────────────────────── */
+
+.coollab-continuous-editor .collaboration-cursor__caret {
+  border-left: 2px solid currentColor;
+  margin-left: -1px;
+  pointer-events: none;
+  position: relative;
+}
+
+.coollab-continuous-editor .collaboration-cursor__label {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px 4px 4px 0;
+  position: absolute;
+  top: -1.4em;
+  left: -1px;
+  white-space: nowrap;
+  color: white;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* ── Comment Highlights ────────────────────────────────────────────────── */
+.comment-highlight {
+  background-color: rgba(255, 226, 0, 0.3);
+  border-bottom: 2px solid rgba(255, 170, 0, 0.4);
+  cursor: pointer;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+  position: relative;
+}
+
+.comment-highlight:hover {
+  background-color: rgba(255, 226, 0, 0.5);
+}
+
+.comment-highlight[data-status="unread"] {
+  background-color: rgba(255, 120, 0, 0.3);
+  border-bottom-color: rgba(255, 80, 0, 0.5);
+}
+
+.comment-highlight[data-status="resolved"] {
+  background-color: transparent !important;
+  border-bottom-color: transparent !important;
+  transition: all 0.5s ease;
+}
+
+/* Overlapping comments */
+.comment-highlight .comment-highlight {
+  background-color: rgba(255, 180, 0, 0.4);
+  border-bottom-width: 3px;
+}
+
+/* Pulse animation for focused comment in panel */
+@keyframes comment-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(124, 107, 240, 0.4); transform: scale(1); }
+  50% { box-shadow: 0 0 0 10px rgba(124, 107, 240, 0); transform: scale(1.02); }
+  100% { box-shadow: 0 0 0 0 rgba(124, 107, 240, 0); transform: scale(1); }
+}
+
+.comment-card--focused {
+  animation: comment-pulse 1.5s ease-in-out;
+  border-color: #7c6bf0 !important;
+  background-color: rgba(124, 107, 240, 0.05) !important;
+  z-index: 10;
+}

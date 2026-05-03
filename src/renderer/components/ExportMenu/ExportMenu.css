@@ -1,0 +1,99 @@
+/* ── Export Menu ────────────────────────────────────────────────────────── */
+
+.export-menu {
+  position: relative;
+}
+
+.export-menu__trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid #74c7ec;
+  border-radius: 8px;
+  color: #74c7ec;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.export-menu__trigger:hover {
+  background: rgba(116, 199, 236, 0.1);
+  border-color: #89dceb;
+  color: #89dceb;
+}
+
+.export-menu__trigger span {
+  font-weight: 600;
+}
+
+.export-menu__trigger:active {
+  transform: translateY(0);
+}
+
+.export-menu__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 240px;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 10px;
+  padding: 6px;
+  z-index: 1000;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  animation: export-in 0.12s ease-out;
+}
+
+@keyframes export-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.export-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #cdd6f4;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.08s;
+}
+
+.export-menu__item:hover {
+  background: #45475a;
+}
+
+.export-menu__item svg {
+  color: #89b4fa;
+  flex-shrink: 0;
+}
+
+.export-menu__item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.export-menu__item-text span:first-child {
+  font-size: 13px;
+}
+
+.export-menu__item-ext {
+  font-size: 11px;
+  color: #6c7086;
+}
+
+.export-menu__divider {
+  height: 1px;
+  background: #45475a;
+  margin: 4px 8px;
+}

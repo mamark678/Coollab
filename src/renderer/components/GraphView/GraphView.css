@@ -1,0 +1,490 @@
+/* ── Graph View Styles ──────────────────────────────────────────────────── */
+
+.graph-view {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #0d0d1a;
+  overflow: hidden;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.graph-view--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  width: 100vw;
+  height: 100vh;
+}
+
+.graph-view__canvas {
+  display: block;
+  cursor: grab;
+  user-select: none;
+  /*
+    Explicit width/height instead of flex:1 — when the panel reopens,
+    flex layout may not have settled before getBoundingClientRect() fires,
+    returning 0 and causing the DPR sync to size the buffer incorrectly.
+    With explicit 100%/100%, the canvas always fills the container and
+    getBoundingClientRect() returns the correct dimensions immediately.
+  */
+  width: 100%;
+  height: 100%;
+  /*
+    Do NOT add image-rendering: crisp-edges or optimize-contrast here.
+    Those properties apply a nearest-neighbor/sharpening pass on top of
+    the browser's normal compositing, which fights with the devicePixelRatio
+    buffer scaling we do in JS and is what causes the blurriness on reopen.
+    The default browser bicubic compositing is correct for canvas HiDPI.
+  */
+}
+
+.graph-view__canvas--dragging {
+  cursor: grabbing;
+}
+
+/* ── Empty / Error States ──────────────────────────────────────────────── */
+
+.graph-view__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: #94a3b8;
+  gap: 16px;
+  padding: 32px;
+  text-align: center;
+}
+
+.graph-view__empty-icon {
+  width: 48px;
+  height: 48px;
+  opacity: 0.4;
+}
+
+.graph-view__empty-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #cdd6f4;
+}
+
+.graph-view__empty-desc {
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 240px;
+}
+
+.graph-view__retry-btn {
+  padding: 8px 20px;
+  background: rgba(124, 58, 237, 0.2);
+  border: 1px solid rgba(124, 58, 237, 0.3);
+  border-radius: 8px;
+  color: #a78bfa;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.graph-view__retry-btn:hover {
+  background: rgba(124, 58, 237, 0.3);
+  border-color: rgba(124, 58, 237, 0.5);
+}
+
+/* ── Search Bar (top of graph) ─────────────────────────────────────────── */
+
+.graph-search-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(13, 13, 26, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 20px;
+  padding: 6px 12px;
+  width: 200px;
+  z-index: 50;
+  backdrop-filter: blur(12px);
+  transition: width 0.2s ease, border-color 0.15s, background 0.15s;
+}
+
+.graph-search-bar--active {
+  width: 240px;
+  border-color: rgba(124, 58, 237, 0.4);
+  background: rgba(13, 13, 26, 0.9);
+}
+
+.graph-search-bar__icon {
+  color: #64748b;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.graph-search-bar--active .graph-search-bar__icon {
+  color: #a78bfa;
+}
+
+.graph-search-bar__input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-family: inherit;
+  min-width: 0;
+}
+
+.graph-search-bar__input::placeholder {
+  color: #475569;
+}
+
+.graph-search-bar__clear {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.graph-search-bar__clear:hover {
+  color: #e2e8f0;
+}
+
+/* ── Tooltip ───────────────────────────────────────────────────────────── */
+
+.graph-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100;
+  background: rgba(13, 13, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 10px 14px;
+  backdrop-filter: blur(16px);
+  min-width: 160px;
+  max-width: 260px;
+  animation: graph-tooltip-in 0.1s ease-out;
+}
+
+@keyframes graph-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.graph-tooltip__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e8eaf0;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.graph-tooltip__meta {
+  font-size: 11px;
+  color: #94a3b8;
+  display: flex;
+  gap: 8px;
+}
+
+.graph-tooltip__tags {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.graph-tooltip__tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
+}
+
+.graph-tooltip__hint {
+  font-size: 10px;
+  color: #475569;
+  margin-top: 6px;
+  font-style: italic;
+}
+
+/* ── Controls ──────────────────────────────────────────────────────────── */
+
+.graph-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 50;
+}
+
+.graph-controls__btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(13, 13, 26, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+  backdrop-filter: blur(8px);
+}
+
+.graph-controls__btn:hover {
+  background: rgba(30, 30, 50, 0.92);
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.graph-controls__btn--active {
+  background: rgba(124, 58, 237, 0.2);
+  color: #a78bfa;
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+/* ── Filter Panel ──────────────────────────────────────────────────────── */
+
+.graph-filter-panel {
+  position: absolute;
+  bottom: 56px;
+  left: 16px;
+  width: 224px;
+  background: rgba(11, 11, 22, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 14px;
+  z-index: 50;
+  backdrop-filter: blur(20px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: graph-filter-slide-in 0.15s ease-out;
+  max-height: calc(100% - 120px);
+  overflow-y: auto;
+}
+
+@keyframes graph-filter-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.graph-filter-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.graph-filter-panel__close {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.graph-filter-panel__close:hover {
+  color: #e2e8f0;
+}
+
+.graph-filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.graph-filter-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.graph-filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.graph-filter-toggle:hover {
+  color: #cbd5e1;
+}
+
+.graph-filter-toggle input[type="checkbox"] {
+  accent-color: #7c3aed;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.graph-filter-slider {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.graph-filter-slider span:first-child {
+  flex: 1;
+}
+
+.graph-filter-slider input[type="range"] {
+  width: 100%;
+  height: 3px;
+  accent-color: #7c3aed;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+.graph-filter-slider__value {
+  min-width: 32px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #7c3aed;
+}
+
+.graph-filter-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 12px;
+  color: #e2e8f0;
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.graph-filter-input:focus {
+  border-color: rgba(124, 58, 237, 0.4);
+}
+
+.graph-filter-input::placeholder {
+  color: #475569;
+}
+
+/* ── Graph Panel in Layout ─────────────────────────────────────────────── */
+
+.graph-panel {
+  width: 320px;
+  background: #0d0d1a;
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.graph-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.graph-panel__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.graph-panel__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.graph-panel__action-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.graph-panel__action-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
+}
+
+/* ── Resize Handle ─────────────────────────────────────────────────────── */
+
+.graph-panel__resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: col-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background 0.15s;
+}
+
+.graph-panel__resize-handle:hover {
+  background: rgba(124, 58, 237, 0.3);
+}

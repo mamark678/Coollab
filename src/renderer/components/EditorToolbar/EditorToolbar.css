@@ -1,0 +1,352 @@
+/* ── Editor Toolbar ─────────────────────────────────────────────────────── */
+
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 12px;
+  background: #1a1a2e;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-overlay) transparent;
+  height: 44px;
+  position: relative;
+  z-index: 100;
+}
+
+.editor-toolbar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.editor-toolbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-toolbar::-webkit-scrollbar-thumb {
+  background: var(--surface-overlay);
+  border-radius: 2px;
+}
+
+.editor-toolbar--empty {
+  min-height: 44px;
+}
+
+/* ── Toolbar Group ─────────────────────────────────────────────────────── */
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+}
+
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(255,255,255,0.08);
+  margin: 0 6px;
+  flex-shrink: 0;
+}
+
+/* ── Toolbar Button ────────────────────────────────────────────────────── */
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.toolbar-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.08);
+  color: #f1f5f9;
+  border-color: transparent;
+}
+
+.toolbar-btn:active:not(:disabled) {
+  background: var(--surface-overlay);
+  transform: scale(0.95);
+}
+
+.toolbar-btn--active {
+  background: rgba(124,58,237,0.2);
+  color: #a78bfa;
+  border-color: transparent;
+}
+
+.toolbar-btn--active:hover {
+  background: rgba(124, 107, 240, 0.18);
+  color: var(--accent-primary-hover);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ── Color Indicator Bar (under icons for text/highlight color) ───────── */
+
+.toolbar-color-indicator {
+  position: absolute;
+  bottom: 3px;
+  left: 6px;
+  right: 6px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+/* ── Font Family Dropdown ──────────────────────────────────────────────── */
+
+.toolbar-dropdown {
+  position: relative;
+}
+
+.toolbar-dropdown__trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  height: 32px;
+}
+
+.toolbar-dropdown__trigger:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+  border-color: var(--border-primary);
+}
+
+.toolbar-dropdown__label {
+  max-width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toolbar-dropdown__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  z-index: 9999;
+  box-shadow: var(--shadow-lg);
+  animation: toolbar-dropdown-in 0.12s ease-out;
+  backdrop-filter: blur(16px);
+}
+
+@keyframes toolbar-dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toolbar-dropdown__item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.toolbar-dropdown__item:hover {
+  background: var(--surface-overlay);
+}
+
+.toolbar-dropdown__item--active {
+  background: rgba(124, 107, 240, 0.12);
+  color: var(--accent-primary);
+}
+
+/* Paper size dropdown needs more width for dimension labels */
+.toolbar-dropdown__menu--paper-size {
+  min-width: 240px;
+}
+
+.toolbar-dropdown__menu--paper-size .toolbar-dropdown__item {
+  padding: 10px 14px;
+}
+
+/* ── Font Size Input ───────────────────────────────────────────────────── */
+
+.toolbar-fontsize {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  height: 32px;
+  background: var(--surface-card);
+}
+
+.toolbar-fontsize__input {
+  width: 38px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+
+.toolbar-fontsize__input::-webkit-outer-spin-button,
+.toolbar-fontsize__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.toolbar-fontsize__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.toolbar-fontsize__btn:hover {
+  background: var(--surface-overlay);
+  color: var(--text-primary);
+}
+
+/* ── Color Picker Popup ────────────────────────────────────────────────── */
+
+.toolbar-color-picker {
+  position: relative;
+}
+
+.toolbar-color-picker__popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  z-index: 1000;
+  box-shadow: var(--shadow-lg);
+  min-width: 170px;
+  animation: toolbar-dropdown-in 0.12s ease-out;
+  backdrop-filter: blur(16px);
+}
+
+.toolbar-color-picker__label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.toolbar-color-picker__input {
+  width: 100%;
+  height: 34px;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: transparent;
+}
+
+.toolbar-color-picker__input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.toolbar-color-picker__input::-webkit-color-swatch {
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-sm);
+}
+
+.toolbar-color-picker__reset {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: var(--surface-overlay);
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.toolbar-color-picker__reset:hover {
+  background: var(--surface-card);
+  color: var(--text-primary);
+}
+
+/* ── Highlight Swatches ────────────────────────────────────────────────── */
+
+.toolbar-highlight-swatches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.toolbar-highlight-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.toolbar-highlight-swatch:hover {
+  border-color: var(--accent-primary);
+  transform: scale(1.12);
+}
+
+.toolbar-highlight-swatch--none {
+  background: var(--surface-overlay);
+  border-style: dashed;
+  border-color: var(--text-faint);
+}

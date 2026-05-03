@@ -1,0 +1,120 @@
+/* ── Slash Command Menu ─────────────────────────────────────────────────── */
+
+.slash-menu {
+  width: 300px;
+  max-height: 360px;
+  overflow-y: auto;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-lg);
+  padding: 6px;
+  z-index: 1100;
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(124, 107, 240, 0.06);
+  animation: slash-in 0.12s ease-out;
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-overlay) transparent;
+  backdrop-filter: blur(16px);
+}
+
+@keyframes slash-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.slash-menu::-webkit-scrollbar {
+  width: 4px;
+}
+
+.slash-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.slash-menu::-webkit-scrollbar-thumb {
+  background: var(--surface-overlay);
+  border-radius: 2px;
+}
+
+.slash-query {
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--border-primary);
+  margin-bottom: 4px;
+}
+
+.slash-query__slash {
+  color: var(--accent-primary);
+  font-weight: 600;
+}
+
+.slash-group {
+  margin-bottom: 4px;
+}
+
+.slash-group__label {
+  padding: 8px 10px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.slash-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.08s;
+}
+
+.slash-item:hover,
+.slash-item--selected {
+  background: var(--surface-overlay);
+}
+
+.slash-item__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--surface-base);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-sm);
+  color: var(--accent-primary);
+  flex-shrink: 0;
+}
+
+.slash-item__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.slash-item__name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.slash-item__desc {
+  font-size: 11px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

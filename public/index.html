@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Coollab</title>
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; height: 100vh; background: #f5f5f5; overflow: hidden; }
+
+      /* Sidebar Styling */
+      #sidebar {
+        width: 260px;
+        background: #2c2c2c;
+        color: #ddd;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #444;
+        z-index: 10;
+      }
+      .sidebar-header {
+        padding: 20px;
+        border-bottom: 1px solid #444;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .sidebar-header h2 { font-size: 18px; margin: 0; color: white; }
+      #add-note-btn {
+        background: #4a90e2;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        padding: 5px 10px;
+        font-weight: bold;
+      }
+      #add-note-btn:hover { background: #357abd; }
+
+      #notes-list {
+        flex: 1;
+        overflow-y: auto;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+      .note-item {
+        padding: 12px 20px;
+        cursor: pointer;
+        border-bottom: 1px solid #3a3a3a;
+        transition: background 0.2s;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .note-item:hover { background: #3d3d3d; }
+      .note-item.active { background: #4a90e2; color: white; }
+
+      /* Main Content Area */
+      #main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: #eef2f5;
+        overflow-y: auto;
+      }
+
+      /* Toolbar */
+      .toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        background: white;
+        padding: 8px 20px;
+        display: flex;
+        gap: 10px;
+        border-bottom: 1px solid #ddd;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .toolbar-group {
+        display: flex;
+        gap: 4px;
+        border-right: 1px solid #ddd;
+        padding-right: 10px;
+        margin-right: 10px;
+      }
+      .toolbar-group:last-child { border-right: none; }
+      .toolbar-btn {
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+      }
+      .toolbar-btn:hover { background: #f0f0f0; border-color: #aaa; }
+      .toolbar-btn.active { background: #e0e0e0; color: #4a90e2; border-color: #4a90e2; }
+
+      /* Document Style */
+      .doc-container {
+        padding: 40px 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .document-page {
+        background: white;
+        width: 816px; /* A4 approximate width */
+        min-height: 1056px;
+        padding: 80px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        display: flex;
+        flex-direction: column;
+        outline: none;
+        border: 1px solid #ddd;
+      }
+      #note-title {
+        font-size: 32px;
+        font-weight: bold;
+        border: none;
+        outline: none;
+        background: transparent;
+        margin-bottom: 20px;
+        width: 100%;
+        font-family: 'Segoe UI', sans-serif;
+      }
+      #editor {
+        flex: 1;
+        outline: none;
+        font-size: 16px;
+        line-height: 1.6;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="sidebar">
+      <div class="sidebar-header">
+        <h2>My Notes</h2>
+        <button id="add-note-btn">+</button>
+      </div>
+      <ul id="notes-list"></ul>
+    </div>
+
+    <div id="main-content">
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <button class="toolbar-btn" onclick="exec('bold')"><b>B</b></button>
+          <button class="toolbar-btn" onclick="exec('italic')"><i>I</i></button>
+          <button class="toolbar-btn" onclick="exec('underline')"><u>U</u></button>
+          <button class="toolbar-btn" onclick="exec('strikeThrough')"><s>S</s></button>
+        </div>
+        <div class="toolbar-group">
+          <button class="toolbar-btn" onclick="exec('formatBlock', 'h1')">H1</button>
+          <button class="toolbar-btn" onclick="exec('formatBlock', 'h2')">H2</button>
+          <button class="toolbar-btn" onclick="exec('formatBlock', 'p')">Text</button>
+        </div>
+        <div class="toolbar-group">
+          <button class="toolbar-btn" onclick="exec('insertUnorderedList')">• List</button>
+          <button class="toolbar-btn" onclick="exec('insertOrderedList')">1. List</button>
+          <button class="toolbar-btn" onclick="exec('justifyLeft')">←</button>
+          <button class="toolbar-btn" onclick="exec('justifyCenter')">↔</button>
+          <button class="toolbar-btn" onclick="exec('justifyRight')">→</button>
+        </div>
+      </div>
+
+      <div class="doc-container">
+        <div class="document-page">
+          <input type="text" id="note-title" placeholder="Untitled Note...">
+          <div id="editor"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Load Yjs and WebRTC from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/yjs@13.6.1/dist/yjs.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/y-webrtc@10.2.7/dist/y-webrtc.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- Load TipTap via a simplified bundle for the browser -->
+    <script src="https://cdn.jsdelivr.net/npm/@tiptap/core@2.1.0/dist/index.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tiptap/starter-kit@2.1.0/dist/index.js"></script>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>

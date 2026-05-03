@@ -1,0 +1,780 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@source "./pages/**/*.tsx";
+@source "./components/**/*.tsx";
+@source "./App.tsx";
+
+/* ── Design Tokens ─────────────────────────────────────────────────────── */
+
+:root {
+  /* Surface palette */
+  --surface-crust: #0b0b12;
+  --surface-mantle: #111118;
+  --surface-base: #18181f;
+  --surface-card: #1e1e28;
+  --surface-raised: #252530;
+  --surface-overlay: #2c2c3a;
+
+  /* Text palette */
+  --text-primary: #e8eaf0;
+  --text-secondary: #a0a4b8;
+  --text-muted: #6b6f82;
+  --text-faint: #4a4d5e;
+
+  /* Accent palette */
+  --accent-primary: #7c6bf0;
+  --accent-primary-hover: #9485f5;
+  --accent-secondary: #4ea1f7;
+  --accent-gradient: linear-gradient(135deg, #7c6bf0, #4ea1f7);
+  --accent-gradient-warm: linear-gradient(135deg, #e67a7a, #e6a44e);
+  --accent-glow: rgba(124, 107, 240, 0.25);
+
+  /* Status */
+  --status-success: #6dd49e;
+  --status-warning: #e6c96e;
+  --status-error: #e66b7a;
+  --status-info: #4ea1f7;
+
+  /* Borders */
+  --border-primary: rgba(255, 255, 255, 0.07);
+  --border-hover: rgba(255, 255, 255, 0.12);
+  --border-active: rgba(124, 107, 240, 0.5);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(124, 107, 240, 0.15);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Transitions */
+  --transition-fast: 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  background: var(--surface-base);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Custom Scrollbars ──────────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-overlay) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-overlay);
+  border-radius: 100px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+
+/* ── App Layout ────────────────────────────────────────────────────────── */
+
+.app-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: var(--surface-crust);
+}
+
+/* ── Icon Rail (Obsidian-style left strip) ──────────────────────────────── */
+
+.app-icon-rail {
+  width: 44px;
+  background: #0a0a10;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.app-icon-rail__btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #4a4d5e;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.app-icon-rail__btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+}
+
+.app-icon-rail__btn--active {
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+}
+
+.app-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-base);
+  border-radius: 12px 0 0 12px;
+  overflow: hidden;
+}
+
+.app-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.app-editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Top Bar ────────────────────────────────────────────────────────────── */
+
+.app-top-bar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 52px;
+  background: var(--surface-mantle);
+  border-bottom: 1px solid var(--border-primary);
+  backdrop-filter: blur(12px);
+  position: relative;
+  z-index: 100; /* Ensure dropdowns float over the content below */
+}
+
+.app-top-bar>*:first-child {
+  flex: 1;
+}
+
+.app-top-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-right: 16px;
+  flex-shrink: 0;
+  overflow: visible; /* Prevent clipping of dropdown menus */
+}
+
+.app-top-bar__panel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.app-top-bar__panel-btn:hover {
+  background: var(--surface-raised);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+.app-top-bar__panel-btn--active {
+  background: var(--surface-raised);
+  border-color: var(--border-active);
+  color: var(--accent-primary);
+  box-shadow: var(--shadow-glow);
+}
+
+/* ── Right Panel ───────────────────────────────────────────────────────── */
+
+.app-right-panel {
+  width: 280px;
+  background: var(--surface-mantle);
+  border-left: 1px solid var(--border-primary);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* ── Comment Highlights (in editor content) ────────────────────────────── */
+
+.comment-highlight {
+  background: rgba(230, 201, 110, 0.15);
+  border-bottom: 2px solid var(--status-warning);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.comment-highlight:hover {
+  background: rgba(230, 201, 110, 0.25);
+}
+
+/* ── Distraction-Free Mode ────────────────────────────────────────────── */
+
+.app-distraction-free {
+  position: fixed;
+  inset: 0;
+  background: var(--surface-base);
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  padding: 60px 24px 40px;
+  overflow-y: auto;
+}
+
+.distraction-free-editor {
+  width: 100%;
+  max-width: 720px;
+}
+
+.distraction-free-exit {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  padding: 8px 18px;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  z-index: 10000;
+  opacity: 0.5;
+}
+
+.distraction-free-exit:hover {
+  opacity: 1;
+  background: var(--surface-overlay);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+}
+
+/* ── Paged Editor Outer ────────────────────────────────────────────────── */
+.paged-editor-outer {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+
+
+/* ── ProseMirror / TipTap Content Styles ───────────────────────────────── */
+
+.collab-editor-content {
+  flex: 1;
+  outline: none;
+  padding: 0;
+  min-height: 200px;
+  line-height: 1.75;
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+/* Paragraphs */
+.collab-editor-content p {
+  margin-bottom: 0.75rem;
+}
+
+/* Headings */
+.collab-editor-content h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.collab-editor-content h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+  line-height: 1.35;
+  letter-spacing: -0.005em;
+}
+
+.collab-editor-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.collab-editor-content h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+/* Links */
+.collab-editor-content a,
+.collab-editor-content .editor-link {
+  color: var(--accent-secondary);
+  text-decoration: underline;
+  text-decoration-color: rgba(78, 161, 247, 0.35);
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--transition-fast);
+  cursor: pointer;
+}
+
+.collab-editor-content a:hover,
+.collab-editor-content .editor-link:hover {
+  text-decoration-color: var(--accent-secondary);
+}
+
+/* Blockquote */
+.collab-editor-content blockquote {
+  border-left: 3px solid var(--accent-primary);
+  padding-left: 16px;
+  margin: 12px 0;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Code Block */
+.collab-editor-content pre {
+  background: var(--surface-mantle);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin: 12px 0;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.collab-editor-content pre code {
+  background: none;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+/* Inline code */
+.collab-editor-content code {
+  background: var(--surface-overlay);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9em;
+  color: var(--status-error);
+}
+
+/* Horizontal Rule */
+.collab-editor-content hr {
+  border: none;
+  border-top: 1px solid var(--border-primary);
+  margin: 24px 0;
+}
+
+/* Lists */
+.collab-editor-content ul,
+.collab-editor-content ol {
+  padding-left: 24px;
+  margin-bottom: 0.75rem;
+}
+
+.collab-editor-content li {
+  margin-bottom: 0.25rem;
+}
+
+.collab-editor-content li::marker {
+  color: var(--accent-primary);
+}
+
+/* Task Lists */
+.collab-editor-content ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.collab-editor-content ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.collab-editor-content ul[data-type="taskList"] li label {
+  display: flex;
+  align-items: center;
+}
+
+.collab-editor-content ul[data-type="taskList"] li input[type="checkbox"] {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--text-faint);
+  border-radius: 5px;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: all var(--transition-fast);
+  position: relative;
+}
+
+.collab-editor-content ul[data-type="taskList"] li input[type="checkbox"]:checked {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+}
+
+.collab-editor-content ul[data-type="taskList"] li input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  top: -1px;
+  left: 2px;
+  font-size: 12px;
+  color: white;
+  font-weight: bold;
+}
+
+.collab-editor-content ul[data-type="taskList"] li[data-checked="true"]>div>p {
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+/* Tables */
+.collab-editor-content table {
+  border-collapse: collapse;
+  margin: 16px 0;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+}
+
+.collab-editor-content th,
+.collab-editor-content td {
+  border: 1px solid var(--border-primary);
+  padding: 8px 12px;
+  min-width: 80px;
+  vertical-align: top;
+  position: relative;
+}
+
+.collab-editor-content th {
+  background: var(--surface-raised);
+  font-weight: 600;
+  text-align: left;
+}
+
+.collab-editor-content td {
+  background: var(--surface-base);
+}
+
+/* Table selected cell */
+.collab-editor-content .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(124, 107, 240, 0.12);
+  pointer-events: none;
+}
+
+/* Table resize handle */
+.collab-editor-content .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--accent-primary);
+  cursor: col-resize;
+  z-index: 10;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+/* Images */
+.collab-editor-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  margin: 12px 0;
+  cursor: default;
+}
+
+.collab-editor-content img.ProseMirror-selectednode {
+  outline: 2px solid var(--accent-primary);
+  border-radius: var(--radius-md);
+}
+
+/* Placeholder */
+.collab-editor-content p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-faint);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Highlight marks */
+.collab-editor-content mark {
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
+/* Subscript / Superscript */
+.collab-editor-content sub {
+  font-size: 0.75em;
+}
+
+.collab-editor-content sup {
+  font-size: 0.75em;
+}
+
+/* Strikethrough */
+.collab-editor-content s {
+  text-decoration-color: rgba(232, 234, 240, 0.45);
+}
+
+/* ── WikiLink Inline Node ──────────────────────────────────────────────── */
+
+.wiki-link {
+  cursor: pointer;
+  font-weight: 500;
+  border-radius: 3px;
+  padding: 0 2px;
+  transition: all 0.12s;
+}
+
+.wiki-link--resolved {
+  color: #4ea1f7;
+  text-decoration: underline;
+  text-decoration-color: rgba(78, 161, 247, 0.35);
+  text-underline-offset: 2px;
+}
+
+.wiki-link--resolved:hover {
+  text-decoration-color: #4ea1f7;
+  background: rgba(78, 161, 247, 0.1);
+}
+
+.wiki-link--unresolved {
+  color: #6b6f82;
+  text-decoration: underline;
+  text-decoration-style: dashed;
+  text-decoration-color: rgba(107, 111, 130, 0.4);
+  text-underline-offset: 2px;
+}
+
+.wiki-link--unresolved:hover {
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* ── Tag Inline Node ───────────────────────────────────────────────────── */
+
+.editor-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 100px;
+  background: rgba(124, 58, 237, 0.15);
+  color: #a78bfa;
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.12s;
+  vertical-align: baseline;
+}
+
+.editor-tag:hover {
+  background: rgba(124, 58, 237, 0.25);
+  color: #c4b5fd;
+}
+
+/* ── Sidebar Footer ────────────────────────────────────────────────────── */
+
+.sidebar__footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+/* ── Loading / Error states ─────────────────────────────────────────────── */
+.editor-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--surface-overlay);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.editor-error {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  background: var(--surface-card);
+  border: 1px solid var(--status-error);
+  color: var(--status-error);
+}
+
+.editor-error pre {
+  margin-top: 8px;
+  font-size: 12px;
+  opacity: 0.8;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+/* ── Collaboration cursors ──────────────────────────────────────────────── */
+.collaboration-cursor__caret {
+  border-left: 1px solid;
+  border-right: 1px solid;
+  margin-left: -1px;
+  margin-right: -1px;
+  pointer-events: none;
+  position: relative;
+  word-break: normal;
+}
+
+.collaboration-cursor__label {
+  border-radius: 3px 3px 3px 0;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  left: -1px;
+  line-height: 1;
+  padding: 3px 6px;
+  position: absolute;
+  top: -1.4em;
+  user-select: none;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ── Print Styles ──────────────────────────────────────────────────────── */
+@media print {
+  .app-layout>*:not(.app-main) {
+    display: none !important;
+  }
+
+  .editor-toolbar,
+  .app-status-bar,
+  .app-outline-panel,
+  .toolbar-group {
+    display: none !important;
+  }
+
+  .app-editor-area {
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  .collab-editor-content {
+    color: #000 !important;
+  }
+
+  .collab-editor-content h1,
+  .collab-editor-content h2,
+  .collab-editor-content h3,
+  .collab-editor-content h4 {
+    break-after: avoid;
+    color: #000 !important;
+  }
+
+  body {
+    background: #fff !important;
+  }
+}
+
+/* ── Share page animations (global availability) ──────────────────────── */
+@keyframes share-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}

@@ -1,0 +1,88 @@
+/* ── Document Outline ──────────────────────────────────────────────────── */
+
+.doc-outline {
+  padding: 16px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.doc-outline__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  letter-spacing: 0.06em;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+.doc-outline__empty {
+  font-size: 13px;
+  color: var(--text-faint);
+  line-height: 1.6;
+}
+
+.doc-outline__list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.doc-outline__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  border-left: 2px solid transparent;
+}
+
+.doc-outline__item:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.doc-outline__item--active {
+  background: rgba(124, 107, 240, 0.08);
+  color: var(--accent-primary);
+  border-left-color: var(--accent-primary);
+}
+
+/* Heading hierarchy indentation */
+.doc-outline__item--h1 { padding-left: 10px; }
+.doc-outline__item--h2 { padding-left: 22px; }
+.doc-outline__item--h3 { padding-left: 34px; }
+.doc-outline__item--h4 { padding-left: 46px; }
+
+.doc-outline__level {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-faint);
+  min-width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--surface-card);
+}
+
+.doc-outline__item--active .doc-outline__level {
+  color: var(--accent-primary);
+  background: rgba(124, 107, 240, 0.12);
+}
+
+.doc-outline__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
