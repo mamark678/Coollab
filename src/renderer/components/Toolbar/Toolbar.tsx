@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, RefreshCw, Share2, WifiOff } from 'lucide-react';
-import React from 'react';
+import React, { memo } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import type { ToolbarProps } from './Toolbar.types';
 
@@ -15,7 +15,7 @@ const statusConfig = {
   offline: { color: '#e66b7a', label: 'Offline', shadow: 'rgba(230, 107, 122, 0.5)' }
 };
 
-export const Toolbar: React.FC<ToolbarProps> = ({ title, onTitleChange, syncIndicator, onShareClick, collaborators = [] }) => {
+export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syncIndicator, onShareClick, collaborators = [], onCollaboratorsClick }) => {
   const { setCurrentNoteId } = useAppStore();
   const config = statusConfig[syncIndicator];
   const StatusIcon = statusIcons[syncIndicator] || Check;
@@ -33,7 +33,15 @@ export const Toolbar: React.FC<ToolbarProps> = ({ title, onTitleChange, syncIndi
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
         {/* Presence Avatars */}
-        <div style={{ display: 'flex', alignItems: 'center', marginRight: '8px' }}>
+        <div 
+          onClick={onCollaboratorsClick}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            marginRight: '8px', 
+            cursor: onCollaboratorsClick ? 'pointer' : 'default' 
+          }}
+        >
           {collaborators.length > 0 && (
             <span style={{ 
               color: 'var(--text-secondary)', 
@@ -134,5 +142,5 @@ export const Toolbar: React.FC<ToolbarProps> = ({ title, onTitleChange, syncIndi
       </div>
     </div>
   );
-};
+});
 

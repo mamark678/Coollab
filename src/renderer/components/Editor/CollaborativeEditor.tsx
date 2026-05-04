@@ -19,7 +19,7 @@ import TextStyle from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import React, { useCallback, useEffect, useRef, useState } from 'react'; // ← useRef added here
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'; // ← useRef added here
 import type { WebrtcProvider } from 'y-webrtc';
 import * as Y from 'yjs';
 import { CommentMark } from '../../extensions/CommentMark';
@@ -168,39 +168,43 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
     onTitleChange?.(newTitle);
   };
 
+  const extensions = useMemo(() => [
+    ...getBaseExtensions(),
+    Collaboration.configure({
+      document: yjsDoc,
+      field: 'coollab-page-0',
+    }),
+    CollaborationCursor.configure({
+      provider,
+      user: { id: userId, name: username, color },
+      render(user) {
+        const cursor = document.createElement('span');
+        cursor.classList.add('collaboration-cursor__caret');
+        cursor.setAttribute('style', `border-color: ${user.color}`);
+
+        const label = document.createElement('div');
+        label.classList.add('collaboration-cursor__label');
+        label.setAttribute('style', `background-color: ${user.color}`);
+        label.textContent = user.name;
+
+        cursor.appendChild(label);
+        return cursor;
+      },
+    }),
+    Placeholder.configure({ placeholder: 'Start typing, or press / for commands…' }),
+  ], [yjsDoc, provider, userId, username, color]);
+
+  const editorProps = useMemo(() => ({
+    attributes: {
+      class: 'coollab-continuous-editor',
+      spellcheck: 'true',
+    },
+  }), []);
+
   const editor = useEditor({
     editable: !readOnly,
-    extensions: [
-      ...getBaseExtensions(),
-      Collaboration.configure({
-        document: yjsDoc,
-        field: 'coollab-page-0',
-      }),
-      CollaborationCursor.configure({
-        provider,
-        user: { id: userId, name: username, color },
-        render(user) {
-          const cursor = document.createElement('span');
-          cursor.classList.add('collaboration-cursor__caret');
-          cursor.setAttribute('style', `border-color: ${user.color}`);
-
-          const label = document.createElement('div');
-          label.classList.add('collaboration-cursor__label');
-          label.setAttribute('style', `background-color: ${user.color}`);
-          label.textContent = user.name;
-
-          cursor.appendChild(label);
-          return cursor;
-        },
-      }),
-      Placeholder.configure({ placeholder: 'Start typing, or press / for commands…' }),
-    ],
-    editorProps: {
-      attributes: {
-        class: 'coollab-continuous-editor',
-        spellcheck: 'true',
-      },
-    },
+    extensions,
+    editorProps,
     onUpdate: ({ editor }) => {
       if (onContentUpdate) {
         onContentUpdate(editor.getText());

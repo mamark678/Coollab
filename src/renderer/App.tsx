@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core'
-import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
 import * as Y from 'yjs'
+import { Capacitor } from '@capacitor/core'
 import { Base } from './components/Base/Base'
 import { Canvas } from './components/Canvas/Canvas'
 import { DocumentDashboard } from './components/Dashboard/DocumentDashboard'
@@ -30,8 +31,6 @@ import {
 } from 'lucide-react'
 import { ActivityAIAgent } from './components/Activities/ActivityAIAgent'
 import { ActivityBuilderInline } from './components/Activities/ActivityBuilderInline'
-import { ActivityDashboard } from './components/Activities/ActivityDashboard'
-import { ActivityPanel } from './components/Activities/ActivityPanel'
 import { StudentActivityDisplay } from './components/Activities/StudentActivityDisplay'
 import { VerificationBanner } from './components/auth/VerificationBanner'
 import { BacklinksPanel } from './components/Backlinks/BacklinksPanel'
@@ -42,9 +41,13 @@ import { DocumentOutline } from './components/DocumentOutline/DocumentOutline'
 import EvaluationResultPanel from './components/Evaluation/EvaluationResultPanel'
 import { ExportMenu } from './components/ExportMenu/ExportMenu'
 import { FindReplace } from './components/FindReplace/FindReplace'
-import { FlashcardPanel } from './components/Flashcards/FlashcardPanel'
-import { GraphView } from './components/GraphView/GraphView'
 import { NotificationsDropdown } from './components/Notifications/NotificationsDropdown'
+
+// Lazy loaded heavy components
+const ActivityDashboard = lazy(() => import('./components/Activities/ActivityDashboard').then(m => ({ default: m.ActivityDashboard })));
+const ActivityPanel = lazy(() => import('./components/Activities/ActivityPanel').then(m => ({ default: m.ActivityPanel })));
+const FlashcardPanel = lazy(() => import('./components/Flashcards/FlashcardPanel').then(m => ({ default: m.FlashcardPanel })));
+const GraphView = lazy(() => import('./components/GraphView/GraphView').then(m => ({ default: m.GraphView })));
 import { PropertiesPanel } from './components/PropertiesPanel/PropertiesPanel'
 import { QuickSwitcher } from './components/QuickSwitcher/QuickSwitcher'
 import { SearchModal } from './components/Search/SearchModal'
@@ -157,6 +160,7 @@ export function App() {
 
   // Active right panel tab
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('collaborators')
+  const [showCollaboratorsMobile, setShowCollaboratorsMobile] = useState(false)
 
   // Find & Replace
   const [findOpen, setFindOpen] = useState(false)
@@ -852,14 +856,16 @@ export function App() {
               </button>
             </div>
           </div>
-          <GraphView
-            activeDocId={sidebarSelectionId || currentNoteId}
-            onNavigateToDoc={(docId) => {
-              handleNavigateToDoc(docId)
-              setIsGraphFullscreen(false)
-            }}
-            isVisible={true}
-          />
+          <Suspense fallback={<div style={{ padding: '20px', color: 'var(--text-faint)' }}>Loading Graph...</div>}>
+            <GraphView
+              activeDocId={sidebarSelectionId || currentNoteId}
+              onNavigateToDoc={(docId) => {
+                handleNavigateToDoc(docId)
+                setIsGraphFullscreen(false)
+              }}
+              isVisible={true}
+            />
+          </Suspense>
         </div>
       </div>
     )
@@ -872,11 +878,13 @@ export function App() {
     if (showFlashcards) {
       return (
         <div className="app-right-panel" style={{ width: 380 }}>
-          <FlashcardPanel
-            documentContent={documentTextRef.current || (editor?.getText() ?? '')}
-            documentTitle={activeDocTitle}
-            onClose={() => setShowFlashcards(false)}
-          />
+          <Suspense fallback={<div style={{ padding: '20px', color: 'var(--text-faint)' }}>Loading Flashcards...</div>}>
+            <FlashcardPanel
+              documentContent={documentTextRef.current || (editor?.getText() ?? '')}
+              documentTitle={activeDocTitle}
+              onClose={() => setShowFlashcards(false)}
+            />
+          </Suspense>
         </div>
       )
     }
@@ -884,9 +892,11 @@ export function App() {
     if (showActivities) {
       return (
         <div className="app-right-panel" style={{ width: 380 }}>
-          <ActivityPanel
-            onClose={() => setShowActivities(false)}
-          />
+          <Suspense fallback={<div style={{ padding: '20px', color: 'var(--text-faint)' }}>Loading Activities...</div>}>
+            <ActivityPanel
+              onClose={() => setShowActivities(false)}
+            />
+          </Suspense>
         </div>
       )
     }
@@ -894,19 +904,21 @@ export function App() {
     if (showLeaderboard) {
       return (
         <div className="app-right-panel" style={{ width: 380 }}>
-          <ActivityDashboard
-            projectId={currentProjectId!}
-            onClose={() => setShowLeaderboard(false)}
-            onViewStudent={(studentId) => {
-              if (activityType === 'individual') {
-                setViewingStudentId(studentId);
-                setShowLeaderboard(false);
-                setCurrentNoteId(null); // Force reload
-              }
-            }}
-            onKickStudent={handleKickMember}
-            viewingStudentId={viewingStudentId}
-          />
+          <Suspense fallback={<div style={{ padding: '20px', color: 'var(--text-faint)' }}>Loading Dashboard...</div>}>
+            <ActivityDashboard
+              projectId={currentProjectId!}
+              onClose={() => setShowLeaderboard(false)}
+              onViewStudent={(studentId) => {
+                if (activityType === 'individual') {
+                  setViewingStudentId(studentId);
+                  setShowLeaderboard(false);
+                  setCurrentNoteId(null); // Force reload
+                }
+              }}
+              onKickStudent={handleKickMember}
+              viewingStudentId={viewingStudentId}
+            />
+          </Suspense>
         </div>
       )
     }
@@ -992,12 +1004,17 @@ export function App() {
         }))
     ];
 
+    if (Capacitor.isNativePlatform() && !showCollaboratorsMobile) {
+      return null;
+    }
+
     return (
       <CollaboratorList
         members={mappedMembers}
         onKick={handleKickMember}
         isOwner={isOwner}
         currentUserId={user?.uid}
+        onClose={() => setShowCollaboratorsMobile(false)}
       />
     )
   }
@@ -1251,6 +1268,7 @@ export function App() {
             syncIndicator={syncStatus}
             onShareClick={() => setShowShareDialog(true)}
             collaborators={onlineCollaborators}
+            onCollaboratorsClick={() => setShowCollaboratorsMobile(true)}
           />
           <div className="app-top-bar__actions">
             {!isAdminDashboardMode && (
@@ -1493,11 +1511,13 @@ export function App() {
                 </button>
               </div>
             </div>
-            <GraphView
-              activeDocId={sidebarSelectionId || currentNoteId}
-              onNavigateToDoc={(docId) => handleNavigateToDoc(docId)}
-              isVisible={showGraphPanel}
-            />
+            <Suspense fallback={<div style={{ padding: '20px', color: 'var(--text-faint)' }}>Loading Graph...</div>}>
+              <GraphView
+                activeDocId={sidebarSelectionId || currentNoteId}
+                onNavigateToDoc={(docId) => handleNavigateToDoc(docId)}
+                isVisible={showGraphPanel}
+              />
+            </Suspense>
           </div>
 
           {renderRightPanel()}

@@ -12,4 +12,5 @@ export interface CollaboratorListProps {
   onKick?: (userId: string, name: string) => void;
   isOwner?: boolean;
   currentUserId?: string;
+  onClose?: () => void;
 }

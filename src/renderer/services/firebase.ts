@@ -290,11 +290,15 @@ export class FirebaseService {
 
       collections.forEach(colName => {
         const q = query(collection(this.db, `notes/${projectId}/studentWorkspaces/${userId}/${colName}`));
-        const unsub = onSnapshot(q, (snap) => {
-          allData[colName] = snap.docs.map(d => ({ ...d.data(), id: d.id } as DocumentSchema));
-          const combined = Object.values(allData).flat();
-          callback(combined);
-        });
+        const unsub = onSnapshot(
+          q, 
+          (snap) => {
+            allData[colName] = snap.docs.map(d => ({ ...d.data(), id: d.id } as DocumentSchema));
+            const combined = Object.values(allData).flat();
+            callback(combined);
+          },
+          (error) => console.error(`[FirebaseService] Error listening to ${colName}:`, error)
+        );
         unsubscribers.push(unsub);
       });
 
@@ -306,13 +310,17 @@ export class FirebaseService {
       collection(this.db, 'notes'),
       where('projectId', '==', projectId)
     );
-    return onSnapshot(q, (snap) => {
-      const docs: DocumentSchema[] = [];
-      snap.forEach((docSnap) => {
-        docs.push({ ...(docSnap.data() as DocumentSchema), id: docSnap.id });
-      });
-      callback(docs);
-    });
+    return onSnapshot(
+      q, 
+      (snap) => {
+        const docs: DocumentSchema[] = [];
+        snap.forEach((docSnap) => {
+          docs.push({ ...(docSnap.data() as DocumentSchema), id: docSnap.id });
+        });
+        callback(docs);
+      },
+      (error) => console.error('[FirebaseService] Error listening to global notes:', error)
+    );
   }
 
   /**
@@ -472,11 +480,16 @@ export class FirebaseService {
       docRef = doc(this.db, 'notes', id);
     }
 
-    return onSnapshot(docRef, { includeMetadataChanges: true }, (snap) => {
-      if (snap.exists()) {
-        callback({ ...(snap.data() as DocumentSchema), id: snap.id }, snap.metadata.hasPendingWrites);
-      }
-    });
+    return onSnapshot(
+      docRef, 
+      { includeMetadataChanges: true }, 
+      (snap) => {
+        if (snap.exists()) {
+          callback({ ...(snap.data() as DocumentSchema), id: snap.id }, snap.metadata.hasPendingWrites);
+        }
+      },
+      (error) => console.error(`[FirebaseService] Error listening to note ${id}:`, error)
+    );
   }
 
   public async saveYjsUpdate(noteId: string, update: Uint8Array, authorId: string): Promise<void> {
@@ -495,10 +508,14 @@ export class FirebaseService {
       where('timestamp', '>', since),
       orderBy('timestamp')
     );
-    return onSnapshot(q, (snap) => {
-      const ops = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-      callback(ops);
-    });
+    return onSnapshot(
+      q, 
+      (snap) => {
+        const ops = snap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+        callback(ops);
+      },
+      (error) => console.error(`[FirebaseService] Error listening to Yjs updates for ${noteId}:`, error)
+    );
   }
 
   public async updateCheckpoint(noteId: string, fullState: Uint8Array): Promise<void> {
@@ -563,11 +580,15 @@ export class FirebaseService {
 
   public listenToUserProfile(uid: string, callback: (data: any) => void): () => void {
     const userRef = doc(this.db, 'users', uid);
-    return onSnapshot(userRef, (snap) => {
-      if (snap.exists()) {
-        callback({ ...snap.data(), uid: snap.id });
-      }
-    });
+    return onSnapshot(
+      userRef, 
+      (snap) => {
+        if (snap.exists()) {
+          callback({ ...snap.data(), uid: snap.id });
+        }
+      },
+      (error) => console.error(`[FirebaseService] Error listening to user profile ${uid}:`, error)
+    );
   }
 
   public async getUserProfiles(uids: string[]): Promise<Record<string, { name: string, photoBase64?: string | null, photoURL?: string | null }>> {
@@ -607,11 +628,15 @@ export class FirebaseService {
       orderBy('createdAt', 'desc'),
       limit(50)
     );
-    return onSnapshot(q, (snap) => {
-      const items: NotificationItem[] = [];
-      snap.forEach((d) => items.push({ ...(d.data() as NotificationItem), id: d.id }));
-      callback(items);
-    });
+    return onSnapshot(
+      q, 
+      (snap) => {
+        const items: NotificationItem[] = [];
+        snap.forEach((d) => items.push({ ...(d.data() as NotificationItem), id: d.id }));
+        callback(items);
+      },
+      (error) => console.error(`[FirebaseService] Error listening to notifications for ${userId}:`, error)
+    );
   }
 
   public async markNotificationRead(userId: string, notificationId: string): Promise<void> {
@@ -643,11 +668,15 @@ export class FirebaseService {
       collection(this.db, `notes/${noteId}/comments`),
       orderBy('createdAt', 'asc')
     );
-    return onSnapshot(q, (snap) => {
-      const items: CommentItem[] = [];
-      snap.forEach((d) => items.push({ ...(d.data() as CommentItem), id: d.id }));
-      callback(items);
-    });
+    return onSnapshot(
+      q, 
+      (snap) => {
+        const items: CommentItem[] = [];
+        snap.forEach((d) => items.push({ ...(d.data() as CommentItem), id: d.id }));
+        callback(items);
+      },
+      (error) => console.error(`[FirebaseService] Error listening to comments for ${noteId}:`, error)
+    );
   }
 
   public async createComment(noteId: string, comment: CommentItem): Promise<void> {
@@ -673,11 +702,15 @@ export class FirebaseService {
       collection(this.db, `notes/${noteId}/versions`),
       orderBy('createdAt', 'desc')
     ); // Use createdAt if available, else savedAt
-    return onSnapshot(q, (snap) => {
-      const items: VersionItem[] = [];
-      snap.forEach((d) => items.push({ ...(d.data() as VersionItem), id: d.id }));
-      callback(items.sort((a, b) => b.savedAt - a.savedAt));
-    });
+    return onSnapshot(
+      q, 
+      (snap) => {
+        const items: VersionItem[] = [];
+        snap.forEach((d) => items.push({ ...(d.data() as VersionItem), id: d.id }));
+        callback(items.sort((a, b) => b.savedAt - a.savedAt));
+      },
+      (error) => console.error(`[FirebaseService] Error listening to versions for ${noteId}:`, error)
+    );
   }
 
   public async saveVersion(noteId: string, version: VersionItem): Promise<void> {
@@ -761,9 +794,13 @@ export class FirebaseService {
 
   public listenToPresence(noteId: string, callback: (users: any[]) => void): () => void {
     const presenceCol = collection(this.db, `notes/${noteId}/presence`);
-    return onSnapshot(presenceCol, (snap) => {
-      const users = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
-      callback(users);
-    });
+    return onSnapshot(
+      presenceCol, 
+      (snap) => {
+        const users = snap.docs.map(d => ({ ...d.data(), uid: d.id }));
+        callback(users);
+      },
+      (error) => console.error(`[FirebaseService] Error listening to presence for ${noteId}:`, error)
+    );
   }
 }

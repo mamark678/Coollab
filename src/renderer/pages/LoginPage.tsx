@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { 
   signInWithEmailAndPassword, 
   signInWithCredential, 
@@ -8,7 +9,8 @@ import {
   sendPasswordResetEmail,
   fetchSignInMethodsForEmail,
   EmailAuthProvider,
-  linkWithCredential
+  linkWithCredential,
+  signInWithPopup
 } from 'firebase/auth';
 import { Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { GlassCard } from '../components/auth/GlassCard';
@@ -133,12 +135,27 @@ export const LoginPage: React.FC = () => {
     if (lockoutTime > 0) return;
     setLoading(true);
     setError(null);
-    const electronAPI = window.electronAPI;
-    if (electronAPI) {
-      electronAPI.send('auth:google-login');
+
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const auth = FirebaseService.getInstance().auth;
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
+        setFailedAttempts(0);
+        navigate('/');
+      } catch (err: any) {
+        setError(mapAuthError(err));
+        setLoading(false);
+      }
     } else {
-      setError('Electron API not available.');
-      setLoading(false);
+      const electronAPI = window.electronAPI;
+      if (electronAPI) {
+        electronAPI.send('auth:google-login');
+      } else {
+        setError('Electron API not available.');
+        setLoading(false);
+      }
     }
   };
 

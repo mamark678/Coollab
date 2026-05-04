@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import type { CollaboratorListProps } from './CollaboratorList.types';
 import { getUserAvatar } from '../../utils/avatar.utils';
+import { Capacitor } from '@capacitor/core';
+import { X } from 'lucide-react';
 
-export const CollaboratorList: React.FC<CollaboratorListProps> = ({ 
+export const CollaboratorList: React.FC<CollaboratorListProps> = memo(({ 
   members, 
   onKick, 
   isOwner,
-  currentUserId 
+  currentUserId,
+  onClose
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; userId: string; name: string } | null>(null);
 
@@ -87,16 +90,32 @@ export const CollaboratorList: React.FC<CollaboratorListProps> = ({
     </div>
   );
 
+  const isNative = Capacitor.isNativePlatform();
+
   return (
     <div style={{
-      width: '240px',
+      width: isNative ? '100%' : '240px',
       background: 'var(--surface-mantle)',
       borderLeft: '1px solid var(--border-primary)',
       padding: '20px 16px',
-      position: 'relative',
+      position: isNative ? 'absolute' : 'relative',
+      right: 0,
+      top: 0,
       height: '100%',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      zIndex: isNative ? 100 : 1,
+      transform: 'translateZ(0)',
+      willChange: 'transform'
     }}>
+      {isNative && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Collaborators</h2>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '4px', cursor: 'pointer' }}>
+            <X size={20} />
+          </button>
+        </div>
+      )}
+
       {onlineMembers.length > 0 && (
         <>
           <h3 style={{
@@ -174,4 +193,4 @@ export const CollaboratorList: React.FC<CollaboratorListProps> = ({
       )}
     </div>
   );
-};
+});

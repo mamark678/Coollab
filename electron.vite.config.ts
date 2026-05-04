@@ -24,9 +24,6 @@ export default defineConfig({
   },
   renderer: {
     plugins: [react()],
-    define: {
-      '__GROQ_API_KEY__': JSON.stringify(process.env.GROQ_API_KEY || ''),
-    },
     server: {
       host: true,
       allowedHosts: true

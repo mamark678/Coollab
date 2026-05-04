@@ -7,15 +7,8 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
-/* global __GROQ_API_KEY__ */
-declare const __GROQ_API_KEY__: string;
-
 function getApiKey(): string {
-  try {
-    return __GROQ_API_KEY__ || '';
-  } catch {
-    return '';
-  }
+  return import.meta.env.VITE_GROQ_API_KEY || '';
 }
 
 export interface FlashcardSchema {

@@ -32,6 +32,14 @@
   margin: 0 auto;
   padding: 48px 32px 200px;
   min-height: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .continuous-editor-canvas {
+    padding: 24px 16px 120px;
+    width: 100%;
+  }
 }
 
 /* ── ProseMirror Content Area ──────────────────────────────────────────── */
@@ -43,6 +51,8 @@
   line-height: 1.75;
   color: var(--text-primary, #e8eaf0);
   caret-color: var(--accent-primary, #7c3aed);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* ── Typography ────────────────────────────────────────────────────────── */
