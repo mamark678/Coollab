@@ -74,26 +74,27 @@ export const SignupPage: React.FC = () => {
   };
 
   React.useEffect(() => {
-    // Handle redirect result for non-native web
-    const handleRedirectResult = async () => {
-      try {
-        const auth = FirebaseService.getInstance().auth;
-        const result = await getRedirectResult(auth);
-        if (result) {
-          await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
-          navigate('/');
-        }
-      } catch (err: any) {
-        if (err.code !== 'auth/popup-closed-by-user') {
-          setError(mapAuthError(err));
-        }
-      }
-    };
-
     const isMobile = Capacitor.isNativePlatform();
     const electronAPI = (window as any).electronAPI;
 
+    // IMPORTANT: Never call getRedirectResult on Capacitor/mobile.
+    // Even a passive call triggers Firebase's redirect handler in the WebView,
+    // causing a blank white screen on Android.
     if (!isMobile && !electronAPI) {
+      const handleRedirectResult = async () => {
+        try {
+          const auth = FirebaseService.getInstance().auth;
+          const result = await getRedirectResult(auth);
+          if (result) {
+            await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
+            navigate('/');
+          }
+        } catch (err: any) {
+          if (err.code !== 'auth/popup-closed-by-user') {
+            setError(mapAuthError(err));
+          }
+        }
+      };
       handleRedirectResult();
     }
   }, [navigate]);

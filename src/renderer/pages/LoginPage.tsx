@@ -64,30 +64,32 @@ export const LoginPage: React.FC = () => {
 
   React.useEffect(() => {
     sessionStorage.removeItem('explicitly_logged_out');
-    
-    // Handle redirect result for non-native web
-    const handleRedirectResult = async () => {
-      try {
-        const auth = FirebaseService.getInstance().auth;
-        const result = await getRedirectResult(auth);
-        if (result) {
-          await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
-          setFailedAttempts(0);
-          navigate('/');
-        }
-      } catch (err: any) {
-        if (err.code === 'auth/account-exists-with-different-credential') {
-          setError('An account with this email already exists. Please sign in with your email and password first to link these accounts.');
-        } else {
-          setError(mapAuthError(err));
-        }
-      }
-    };
 
     const isMobile = Capacitor.isNativePlatform();
     const electronAPI = window.electronAPI;
 
+    // IMPORTANT: Never call getRedirectResult on Capacitor/mobile.
+    // Even a passive call to getRedirectResult triggers the Firebase redirect
+    // handler in the WebView, which causes a blank white screen on Android.
     if (!isMobile && !electronAPI) {
+      // Handle redirect result for non-native web browsers only
+      const handleRedirectResult = async () => {
+        try {
+          const auth = FirebaseService.getInstance().auth;
+          const result = await getRedirectResult(auth);
+          if (result) {
+            await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
+            setFailedAttempts(0);
+            navigate('/');
+          }
+        } catch (err: any) {
+          if (err.code === 'auth/account-exists-with-different-credential') {
+            setError('An account with this email already exists. Please sign in with your email and password first to link these accounts.');
+          } else {
+            setError(mapAuthError(err));
+          }
+        }
+      };
       handleRedirectResult();
     }
 
