@@ -136,21 +136,45 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
   useEffect(() => {
     const handleYTitleUpdate = (event: any) => {
       if (event.transaction.origin === 'title-sync') return;
-      const currentYTitle = sharedTitle.toString();
-      if (currentYTitle !== title && currentYTitle.length > 0) {
-        onTitleChange?.(currentYTitle);
+      const currentYTitle = sharedTitle.toString().trim();
+      const localTitle = title?.trim() || '';
+      
+      const isDefault = (t: string) => ['Untitled Document', 'New Document', ''].includes(t);
+
+      if (currentYTitle !== localTitle && currentYTitle.length > 0) {
+        // Bug 1 Fix: Do not let a stale default Yjs title overwrite a real Firestore title
+        if (isDefault(currentYTitle) && !isDefault(localTitle)) {
+          // Push the real title back to Yjs to fix the stale state
+          yjsDoc.transact(() => {
+            sharedTitle.delete(0, sharedTitle.length);
+            sharedTitle.insert(0, title || '');
+          }, 'title-sync');
+        } else {
+          onTitleChange?.(currentYTitle);
+        }
       }
     };
 
     sharedTitle.observe(handleYTitleUpdate);
 
-    const currentY = sharedTitle.toString();
-    if (currentY && !title) {
+    const currentY = sharedTitle.toString().trim();
+    const isDefault = (t: string) => ['Untitled Document', 'New Document', ''].includes(t);
+    const localTitle = title?.trim() || '';
+
+    // Bug 1 Fix: Initialize Yjs from Firestore on load if Yjs is default
+    if (isDefault(currentY) && !isDefault(localTitle)) {
+      yjsDoc.transact(() => {
+        if (sharedTitle.length > 0) {
+          sharedTitle.delete(0, sharedTitle.length);
+        }
+        sharedTitle.insert(0, title || '');
+      }, 'title-sync');
+    } else if (currentY && !title) {
       onTitleChange?.(currentY);
     }
 
     return () => sharedTitle.unobserve(handleYTitleUpdate);
-  }, [sharedTitle, onTitleChange]);
+  }, [sharedTitle, onTitleChange, title, yjsDoc]);
 
   useEffect(() => {
     const currentY = sharedTitle.toString();
@@ -159,7 +183,9 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
         if (sharedTitle.length > 0) {
           sharedTitle.delete(0, sharedTitle.length);
         }
-        sharedTitle.insert(0, title);
+        if (title.length > 0) {
+          sharedTitle.insert(0, title);
+        }
       }, 'title-sync');
     }
   }, [title, sharedTitle, yjsDoc]);

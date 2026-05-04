@@ -10,7 +10,9 @@ import {
   fetchSignInMethodsForEmail,
   EmailAuthProvider,
   linkWithCredential,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
 } from 'firebase/auth';
 import { Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { GlassCard } from '../components/auth/GlassCard';
@@ -62,7 +64,33 @@ export const LoginPage: React.FC = () => {
 
   React.useEffect(() => {
     sessionStorage.removeItem('explicitly_logged_out');
+    
+    // Handle redirect result for non-native web
+    const handleRedirectResult = async () => {
+      try {
+        const auth = FirebaseService.getInstance().auth;
+        const result = await getRedirectResult(auth);
+        if (result) {
+          await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
+          setFailedAttempts(0);
+          navigate('/');
+        }
+      } catch (err: any) {
+        if (err.code === 'auth/account-exists-with-different-credential') {
+          setError('An account with this email already exists. Please sign in with your email and password first to link these accounts.');
+        } else {
+          setError(mapAuthError(err));
+        }
+      }
+    };
+
+    const isMobile = Capacitor.isNativePlatform();
     const electronAPI = window.electronAPI;
+
+    if (!isMobile && !electronAPI) {
+      handleRedirectResult();
+    }
+
     if (!electronAPI) return;
 
     const cleanup = electronAPI.on('auth:google-result', async (_event: any, { idToken, accessToken, error: oauthError }: any) => {
@@ -136,11 +164,21 @@ export const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
 
-    if (Capacitor.isNativePlatform()) {
+    const auth = FirebaseService.getInstance().auth;
+    const googleProvider = new GoogleAuthProvider();
+    
+    if (import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+      googleProvider.setCustomParameters({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID
+      });
+    }
+
+    const isMobile = Capacitor.isNativePlatform();
+
+    if (isMobile) {
+      // Use popup for Capacitor Android
       try {
-        const auth = FirebaseService.getInstance().auth;
-        const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
+        const result = await signInWithPopup(auth, googleProvider);
         await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
         setFailedAttempts(0);
         navigate('/');
@@ -151,10 +189,16 @@ export const LoginPage: React.FC = () => {
     } else {
       const electronAPI = window.electronAPI;
       if (electronAPI) {
+        // Do NOT break the existing Electron desktop Google Sign-In flow
         electronAPI.send('auth:google-login');
       } else {
-        setError('Electron API not available.');
-        setLoading(false);
+        // Keep redirect for non-Electron web desktop
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (err: any) {
+          setError(mapAuthError(err));
+          setLoading(false);
+        }
       }
     }
   };

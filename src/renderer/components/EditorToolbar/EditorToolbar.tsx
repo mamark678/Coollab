@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { Editor } from '@tiptap/core'
 import {
   Undo2,
@@ -105,6 +105,9 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
     </button>
   )
 }
+
+// Memoize — only re-renders when isActive, isDisabled, or label changes
+const MemoToolbarButton = memo(ToolbarButton)
 
 // ─── Font Size Input ─────────────────────────────────────────────────────────
 
@@ -383,7 +386,7 @@ const HighlightColorPicker: React.FC<{ editor: Editor }> = ({ editor }) => {
 
 // ─── Main EditorToolbar ──────────────────────────────────────────────────────
 
-export const EditorToolbar: React.FC<EditorToolbarProps> = ({
+export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
   editor,
   onToggleWordCount,
   onToggleOutline,
@@ -413,7 +416,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     <div className="editor-toolbar" id="editor-toolbar">
       {/* Group 1 — History */}
       <div className="toolbar-group">
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-undo"
           icon={<Undo2 size={16} />}
           label="Undo"
@@ -421,7 +424,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           onClick={() => editor.chain().focus().undo().run()}
           isDisabled={!editor.can().undo()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-redo"
           icon={<Redo2 size={16} />}
           label="Redo"
@@ -440,7 +443,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 
       {/* Group 3 — Text Style */}
       <div className="toolbar-group">
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-bold"
           icon={<Bold size={16} />}
           label="Bold"
@@ -448,7 +451,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           isActive={editor.isActive('bold')}
           onClick={() => editor.chain().focus().toggleBold().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-italic"
           icon={<Italic size={16} />}
           label="Italic"
@@ -456,7 +459,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           isActive={editor.isActive('italic')}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-underline"
           icon={<Underline size={16} />}
           label="Underline"
@@ -464,7 +467,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           isActive={editor.isActive('underline')}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-strikethrough"
           icon={<Strikethrough size={16} />}
           label="Strikethrough"
@@ -472,14 +475,14 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
           isActive={editor.isActive('strike')}
           onClick={() => editor.chain().focus().toggleStrike().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-subscript"
           icon={<Subscript size={16} />}
           label="Subscript"
           isActive={editor.isActive('subscript')}
           onClick={() => editor.chain().focus().toggleSubscript().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-superscript"
           icon={<Superscript size={16} />}
           label="Superscript"
@@ -692,3 +695,5 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     </div>
   )
 }
+
+export const EditorToolbar = memo(EditorToolbarInner)

@@ -1,4 +1,5 @@
-import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, updateProfile, sendEmailVerification } from 'firebase/auth';
+import { Capacitor } from '@capacitor/core';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Check, Lock, Mail, User, X } from 'lucide-react';
 import React, { useState, useRef } from 'react';
@@ -72,21 +73,72 @@ export const SignupPage: React.FC = () => {
     }
   };
 
+  React.useEffect(() => {
+    // Handle redirect result for non-native web
+    const handleRedirectResult = async () => {
+      try {
+        const auth = FirebaseService.getInstance().auth;
+        const result = await getRedirectResult(auth);
+        if (result) {
+          await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
+          navigate('/');
+        }
+      } catch (err: any) {
+        if (err.code !== 'auth/popup-closed-by-user') {
+          setError(mapAuthError(err));
+        }
+      }
+    };
+
+    const isMobile = Capacitor.isNativePlatform();
+    const electronAPI = (window as any).electronAPI;
+
+    if (!isMobile && !electronAPI) {
+      handleRedirectResult();
+    }
+  }, [navigate]);
+
   const handleGoogleSignup = async () => {
     setLoading(true);
     setError(null);
-    try {
-      const auth = FirebaseService.getInstance().auth;
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
-      navigate('/');
-    } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(mapAuthError(err));
+
+    const auth = FirebaseService.getInstance().auth;
+    const googleProvider = new GoogleAuthProvider();
+    
+    if (import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+      googleProvider.setCustomParameters({
+        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID
+      });
+    }
+
+    const isMobile = Capacitor.isNativePlatform();
+
+    if (isMobile) {
+      // Use popup for Capacitor Android
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
+        navigate('/');
+      } catch (err: any) {
+        if (err.code !== 'auth/popup-closed-by-user') {
+          setError(mapAuthError(err));
+        }
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
+    } else {
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI) {
+        // Do NOT break the existing Electron desktop Google Sign-In flow
+        electronAPI.send('auth:google-login');
+      } else {
+        // Keep redirect for non-Electron web desktop
+        try {
+          await signInWithRedirect(auth, googleProvider);
+        } catch (err: any) {
+          setError(mapAuthError(err));
+          setLoading(false);
+        }
+      }
     }
   };
 

@@ -8,7 +8,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: width var(--transition-smooth);
+  transition: transform var(--transition-smooth), opacity var(--transition-smooth);
+  will-change: transform, opacity;
   flex-shrink: 0;
 }
 
@@ -96,7 +97,8 @@
   border-radius: var(--radius-sm);
   color: #94a3b8;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: transform var(--transition-fast), opacity var(--transition-fast), background-color var(--transition-fast);
+  will-change: transform;
 }
 
 .sidebar__toggle:hover {
@@ -152,13 +154,11 @@
   color: #94a3b8;
   font-size: 13px;
   cursor: pointer;
-  /* Smooth all visual transitions */
-  transition: background 0.1s, color 0.1s, border-color 0.08s, box-shadow 0.08s, opacity 0.15s;
-  width: 100%;
-  text-align: left;
   line-height: 1.2;
   /* Prevent text selection during drag */
   user-select: none;
+  transition: transform 0.15s, opacity 0.15s, background-color 0.1s;
+  will-change: transform, opacity;
 }
 
 .sidebar__doc-item:hover {
@@ -229,6 +229,7 @@
   min-width: 14px;
   color: var(--text-faint, #64748b);
   transition: transform 0.15s;
+  will-change: transform;
 }
 
 /* ── Footer ────────────────────────────────────────────────────────────── */

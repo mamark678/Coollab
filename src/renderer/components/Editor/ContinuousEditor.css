@@ -6,6 +6,10 @@
   overflow-x: hidden;
   background: var(--surface-base, #1a1a2e);
   scroll-behavior: smooth;
+  /* GPU compositing layer for smoother scrolling on mobile */
+  transform: translateZ(0);
+  will-change: scroll-position;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Scrollbar styling */
@@ -107,7 +111,7 @@
   text-decoration-color: rgba(124, 107, 240, 0.35);
   text-underline-offset: 2px;
   cursor: pointer;
-  transition: all 0.12s;
+  transition: opacity 0.12s, color 0.12s;
 }
 
 .coollab-continuous-editor a:hover,
@@ -191,7 +195,8 @@
   cursor: pointer;
   flex-shrink: 0;
   margin-top: 3px;
-  transition: all 0.12s ease;
+  transition: transform 0.12s ease, opacity 0.12s ease;
+  will-change: transform;
   position: relative;
 }
 
@@ -302,7 +307,8 @@
   background-color: rgba(255, 226, 0, 0.3);
   border-bottom: 2px solid rgba(255, 170, 0, 0.4);
   cursor: pointer;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition: background-color 0.3s ease, opacity 0.3s ease;
+  will-change: opacity;
   position: relative;
 }
 

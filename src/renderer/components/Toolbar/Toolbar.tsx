@@ -99,7 +99,8 @@ export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syn
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
-              transition: 'all 0.2s',
+              transition: 'transform 0.2s, opacity 0.2s, box-shadow 0.2s',
+              willChange: 'transform, opacity',
               flexShrink: 0,
               boxShadow: '0 2px 8px rgba(124, 107, 240, 0.3)',
             }}
@@ -134,7 +135,8 @@ export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syn
           fontWeight: 600,
           background: 'transparent',
           flexShrink: 0,
-          transition: 'all 0.4s ease',
+          transition: 'transform 0.4s ease, opacity 0.4s ease',
+          willChange: 'transform, opacity',
         }}>
           <StatusIcon size={14} style={{ animation: syncIndicator === 'syncing' ? 'spin 2s linear infinite' : 'none' }} />
           <span>{config.label}</span>
