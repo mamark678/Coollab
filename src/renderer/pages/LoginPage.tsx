@@ -33,6 +33,8 @@ export const LoginPage: React.FC = () => {
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetCooldown, setResetCooldown] = useState(0);
+  // Debug panel — shows raw error info on screen without needing DevTools
+  const [debugLog, setDebugLog] = useState<string[]>([]);
 
   // Rate Limiting (Section 3)
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -165,39 +167,58 @@ export const LoginPage: React.FC = () => {
     if (lockoutTime > 0) return;
     setLoading(true);
     setError(null);
+    setDebugLog([]);
+
+    const isMobile = Capacitor.isNativePlatform();
+    const platformLabel = isMobile ? 'Capacitor (Android)' : (window.electronAPI ? 'Electron' : 'Web Browser');
+    console.log('[AUTH] Platform detected:', platformLabel);
+    setDebugLog(prev => [...prev, `Platform: ${platformLabel}`]);
 
     const auth = FirebaseService.getInstance().auth;
     const googleProvider = new GoogleAuthProvider();
-    
-    if (import.meta.env.VITE_GOOGLE_CLIENT_ID) {
-      googleProvider.setCustomParameters({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID
-      });
+
+    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    console.log('[AUTH] VITE_GOOGLE_CLIENT_ID present:', !!clientId);
+    setDebugLog(prev => [...prev, `Client ID set: ${!!clientId}`]);
+
+    if (clientId) {
+      googleProvider.setCustomParameters({ client_id: clientId });
     }
 
-    const isMobile = Capacitor.isNativePlatform();
-
     if (isMobile) {
-      // Use popup for Capacitor Android
+      console.log('[AUTH] Starting signInWithPopup (mobile)...');
+      setDebugLog(prev => [...prev, 'Calling signInWithPopup...']);
       try {
         const result = await signInWithPopup(auth, googleProvider);
+        console.log('[AUTH] signInWithPopup result:', result);
+        console.log('[AUTH] User:', result.user?.email, result.user?.uid);
+        setDebugLog(prev => [...prev, `Popup OK — user: ${result.user?.email}`]);
+
         await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
+        console.log('[AUTH] handleGoogleSignInResult complete, navigating...');
+        setDebugLog(prev => [...prev, 'Profile saved, navigating...']);
         setFailedAttempts(0);
         navigate('/');
       } catch (err: any) {
-        setError(mapAuthError(err));
+        console.error('[AUTH] signInWithPopup error:', err);
+        console.error('[AUTH] Error code:', err.code);
+        console.error('[AUTH] Error message:', err.message);
+        const debugMsg = `ERROR — code: ${err.code ?? 'none'} | msg: ${err.message ?? 'unknown'}`;
+        setDebugLog(prev => [...prev, debugMsg]);
+        setError(`Auth Error: ${err.code ?? ''} — ${err.message ?? 'Unknown error'}`);
         setLoading(false);
       }
     } else {
       const electronAPI = window.electronAPI;
       if (electronAPI) {
-        // Do NOT break the existing Electron desktop Google Sign-In flow
+        console.log('[AUTH] Using Electron IPC auth flow');
         electronAPI.send('auth:google-login');
       } else {
-        // Keep redirect for non-Electron web desktop
+        console.log('[AUTH] Starting signInWithRedirect (web browser)...');
         try {
           await signInWithRedirect(auth, googleProvider);
         } catch (err: any) {
+          console.error('[AUTH] signInWithRedirect error:', err);
           setError(mapAuthError(err));
           setLoading(false);
         }
@@ -245,6 +266,27 @@ export const LoginPage: React.FC = () => {
             onClick={handleGoogleSignIn} 
             disabled={loading || lockoutTime > 0} 
           />
+
+          {/* ── Debug panel: visible on phone without DevTools ── */}
+          {debugLog.length > 0 && (
+            <div style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              background: 'rgba(0,0,0,0.7)',
+              border: '1px solid #ef4444',
+              borderRadius: 8,
+              fontSize: 11,
+              fontFamily: 'monospace',
+              color: '#f87171',
+              lineHeight: 1.6,
+              wordBreak: 'break-all',
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 4, color: '#fca5a5' }}>🔍 Auth Debug Log</div>
+              {debugLog.map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
+            </div>
+          )}
 
           <div className="flex items-center gap-3 my-[22px]">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/[0.06]"></div>
