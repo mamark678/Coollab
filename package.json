@@ -65,6 +65,7 @@
     "@capacitor/android": "^8.3.1",
     "@capacitor/cli": "^8.3.1",
     "@capacitor/core": "^8.3.1",
+    "@capawesome/capacitor-google-sign-in": "^0.1.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@tiptap/core": "^2.1.0",
     "@tiptap/extension-code-block": "^2.27.2",
