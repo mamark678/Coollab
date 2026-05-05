@@ -100,6 +100,41 @@ export const SignupPage: React.FC = () => {
       };
       handleRedirectResult();
     }
+
+    if (!electronAPI) return;
+
+    const cleanup = electronAPI.on('auth:google-result', async (_event: any, { idToken, accessToken, error: oauthError }: any) => {
+      if (oauthError) {
+        setError(oauthError);
+        setLoading(false);
+        return;
+      }
+      
+      if (idToken || accessToken) {
+        try {
+          const credential = GoogleAuthProvider.credential(idToken, accessToken);
+          const auth = FirebaseService.getInstance().auth;
+          
+          try {
+            const result = await signInWithCredential(auth, credential);
+            await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
+            navigate('/');
+          } catch (err: any) {
+            if (err.code === 'auth/account-exists-with-different-credential') {
+              setError('An account with this email already exists. Please sign in with your email and password first to link these accounts.');
+            } else {
+              setError(mapAuthError(err));
+            }
+          }
+        } catch (err: any) {
+          setError(mapAuthError(err));
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
+
+    return () => cleanup();
   }, [navigate]);
 
   const handleGoogleSignup = async () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FirebaseService } from '../services/firebase';
 import type { NotificationItem } from '../types/notification.types';
 import { useAuth } from './useAuth';
@@ -16,12 +16,31 @@ export function useNotifications() {
     }
 
     const firebase = FirebaseService.getInstance();
-    const unsubscribe = firebase.listenToNotifications(user.uid, (items) => {
-      setNotifications(items);
-      setUnreadCount(items.filter((n) => !n.read).length);
+    let unsubNotifs: (() => void) | null = null;
+
+    // Wait for auth to be fully confirmed before starting Firestore listener
+    const unsubAuth = firebase.auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser && firebaseUser.uid === user.uid) {
+        // Auth token is confirmed — safe to start listener now
+        if (!unsubNotifs) {
+          unsubNotifs = firebase.listenToNotifications(user.uid, (items) => {
+            setNotifications(items);
+            setUnreadCount(items.filter((n) => !n.read).length);
+          });
+        }
+      } else {
+        // Signed out — clean up listener
+        unsubNotifs?.();
+        unsubNotifs = null;
+        setNotifications([]);
+        setUnreadCount(0);
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubAuth();
+      unsubNotifs?.();
+    };
   }, [user?.uid]);
 
   const markAsRead = useCallback(async (notificationId: string) => {

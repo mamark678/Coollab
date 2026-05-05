@@ -3,31 +3,30 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronsUpDown,
+  Database,
   FileEdit,
   FileText,
   Folder,
   FolderOpen,
   FolderPlus,
+  Home,
+  LayoutGrid,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
-  Users,
-  LayoutGrid,
-  Database,
-  Settings,
-  Home
+  Settings
 } from 'lucide-react';
-import React, { useCallback, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import logo from '../../assets/logo.png';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { DocumentSchema, FirebaseService } from '../../services/firebase';
 import { YjsService } from '../../services/yjs';
 import { useAppStore } from '../../store/useAppStore';
-import { SettingsModal } from '../Settings/SettingsModal';
 import { getUserAvatar } from '../../utils/avatar.utils';
-import logo from '../../assets/logo.png';
-import { InstructionsPanel } from '../Activities/InstructionsPanel';
 import { ActivityProjectSettings } from '../Activities/ActivityProjectSettings';
+import { InstructionsPanel } from '../Activities/InstructionsPanel';
+import { SettingsModal } from '../Settings/SettingsModal';
 import './Sidebar.css';
 
 interface SidebarProps {
@@ -47,8 +46,8 @@ interface DropIndicator {
   position: DropPosition;
 }
 
-export const Sidebar: React.FC<SidebarProps> = React.memo(({ 
-  collapsed = false, 
+export const Sidebar: React.FC<SidebarProps> = React.memo(({
+  collapsed = false,
   onToggleCollapse,
   onlineUsers = [],
   projectMembers = [],
@@ -115,13 +114,13 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
 
     const startListener = (pType: string | null, aType: 'individual' | 'group' | null, adminStatus: boolean) => {
       if (!isMounted) return;
-      
+
       // Clean up previous subscription if any
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
       }
-      
+
       // Individual activity: ALWAYS scope to a specific student workspace.
       // - Non-admins: always use their own uid
       // - Admins viewing a student: use viewingStudentId
@@ -130,7 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       const targetUserId = aType === 'individual'
         ? (viewingStudentId || user?.uid)
         : undefined;
-      
+
       // If it's an activity project, wait until we know the activityType to avoid path mismatch
       if (pType === 'activity' && aType === null) {
         return;
@@ -155,43 +154,49 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       );
     };
 
+    // ✅ Fixed
+    let unsubAuth: (() => void) | null = null;
+
     const timer = setTimeout(() => {
-      FirebaseService.getInstance().getNote(pid).then(async (projectDoc) => {
-        if (!isMounted) return;
+      unsubAuth = FirebaseService.getInstance().auth.onAuthStateChanged((firebaseUser) => {
+        if (!firebaseUser || !isMounted) return;
 
-        if (projectDoc) {
-          const isProjectOwner = projectDoc.ownerId === user?.uid;
-          setIsOwner(isProjectOwner);
-          const pType = projectDoc.type || null;
-          const aType = projectDoc.activityType || null;
-          setProjectType(pType);
-          setActivityType(aType);
+        // Auth is confirmed — safe to proceed with Firestore calls
+        FirebaseService.getInstance().getNote(pid).then(async (projectDoc) => {
+          if (!isMounted) return;
 
-          // Check if user is admin
-          let adminStatus = false;
-          if (isProjectOwner) {
-            adminStatus = true;
-          } else {
-            const db = FirebaseService.getInstance().db;
-            const { getDoc, doc } = await import('firebase/firestore');
-            const permSnap = await getDoc(doc(db, 'projectPermissions', `${pid}_${user?.uid}`));
-            if (permSnap.exists() && permSnap.data().role === 'admin') {
+          if (projectDoc) {
+            const isProjectOwner = projectDoc.ownerId === firebaseUser.uid;
+            setIsOwner(isProjectOwner);
+            const pType = projectDoc.type || null;
+            const aType = projectDoc.activityType || null;
+            setProjectType(pType);
+            setActivityType(aType);
+
+            let adminStatus = false;
+            if (isProjectOwner) {
               adminStatus = true;
+            } else {
+              const db = FirebaseService.getInstance().db;
+              const { getDoc, doc } = await import('firebase/firestore');
+              const permSnap = await getDoc(doc(db, 'projectPermissions', `${pid}_${firebaseUser.uid}`));
+              if (permSnap.exists() && permSnap.data().role === 'admin') {
+                adminStatus = true;
+              }
             }
+            setIsAdmin(adminStatus);
+            startListener(pType, aType, adminStatus);
+          } else {
+            setLoadingDocs(false);
           }
-          setIsAdmin(adminStatus);
-          
-          // Start listener with correct params
-          startListener(pType, aType, adminStatus);
-        } else {
-          setLoadingDocs(false);
-        }
+        });
       });
-    }, 200); // Bug 2: Defer non-critical listener
+    }, 200);
 
     return () => {
       isMounted = false;
       clearTimeout(timer);
+      unsubAuth?.();
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
         unsubscribeRef.current = null;
@@ -213,7 +218,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
 
   const handleCreateNewFile = useCallback(async () => {
     if (isCreating.current) return;
-    
+
     const fileName = newFileName.trim();
     if (!user || !fileName) {
       setIsCreatingFile(false);
@@ -234,18 +239,18 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         isFolder: false, parentId: null, projectId: currentProjectId,
       };
       await FirebaseService.getInstance().createNote(
-        newRoomId, 
-        newDoc, 
+        newRoomId,
+        newDoc,
         activityType === 'individual' && !isAdmin ? currentProjectId || undefined : undefined,
         activityType === 'individual' && !isAdmin ? user.uid : undefined
       );
-      
+
       setActiveDocTitle(newDoc.title);
       setCurrentNoteId(newRoomId);
       setCurrentDocType('document');
-      
-      window.dispatchEvent(new CustomEvent('workspace-action', { 
-        detail: { type: 'document_created', title: fileName } 
+
+      window.dispatchEvent(new CustomEvent('workspace-action', {
+        detail: { type: 'document_created', title: fileName }
       }));
     } catch (err) {
       console.error('[Sidebar] Failed to create file:', err);
@@ -256,7 +261,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
 
   const handleCreateNewFolder = useCallback(async () => {
     if (isCreating.current) return;
-    
+
     const folderName = newFolderName.trim();
     if (!user || !folderName) {
       setIsCreatingFolder(false);
@@ -277,15 +282,15 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         isFolder: true, parentId: null, projectId: currentProjectId,
       };
       await FirebaseService.getInstance().createNote(
-        newRoomId, 
+        newRoomId,
         newDoc,
         activityType === 'individual' && !isAdmin ? currentProjectId || undefined : undefined,
         activityType === 'individual' && !isAdmin ? user.uid : undefined
       );
       setExpandedFolders(prev => ({ ...prev, [newRoomId]: true }));
-      
-      window.dispatchEvent(new CustomEvent('workspace-action', { 
-        detail: { type: 'folder_created', name: folderName } 
+
+      window.dispatchEvent(new CustomEvent('workspace-action', {
+        detail: { type: 'folder_created', name: folderName }
       }));
     } catch (err) {
       console.error('[Sidebar] Failed to create folder:', err);
@@ -303,9 +308,9 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         id, title: 'Untitled Canvas', content: JSON.stringify({ nodes: [], edges: [] }),
         ownerId: user.uid, collaborators: [], createdAt: Date.now(), updatedAt: Date.now(),
         type: 'canvas', projectId: currentProjectId
-      }, 
-      activityType === 'individual' && !isAdmin ? currentProjectId : undefined,
-      activityType === 'individual' && !isAdmin ? user.uid : undefined);
+      },
+        activityType === 'individual' && !isAdmin ? currentProjectId : undefined,
+        activityType === 'individual' && !isAdmin ? user.uid : undefined);
       setCurrentNoteId(id);
       setActiveDocTitle('Untitled Canvas');
       setCurrentDocType('canvas');
@@ -324,8 +329,8 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         ownerId: user.uid, collaborators: [], createdAt: Date.now(), updatedAt: Date.now(),
         type: 'base', projectId: currentProjectId
       },
-      activityType === 'individual' && !isAdmin ? currentProjectId : undefined,
-      activityType === 'individual' && !isAdmin ? user.uid : undefined);
+        activityType === 'individual' && !isAdmin ? currentProjectId : undefined,
+        activityType === 'individual' && !isAdmin ? user.uid : undefined);
       setCurrentNoteId(id);
       setActiveDocTitle('Untitled Base');
       setCurrentDocType('base');
@@ -367,12 +372,12 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   const commitRename = useCallback(async () => {
     if (!editingDocId) return;
     const trimmedTitle = editingDocTitle.trim() || 'Untitled Note';
-    
+
     // Bug 2: Debounce write (though rename is usually a one-off, 
     // it helps if the user rapid-fires or if the UI re-renders)
     try {
       await FirebaseService.getInstance().saveNote(
-        editingDocId, 
+        editingDocId,
         { title: trimmedTitle },
         activityType === 'individual' && !isAdmin ? currentProjectId || undefined : undefined,
         activityType === 'individual' && !isAdmin ? user?.uid : undefined
@@ -583,7 +588,7 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
 
     try {
       await FirebaseService.getInstance().saveNote(
-        dragId, 
+        dragId,
         { parentId: newParentId, order: newOrder },
         activityType === 'individual' && !isAdmin ? currentProjectId || undefined : undefined,
         activityType === 'individual' && !isAdmin ? user?.uid : undefined
@@ -712,296 +717,296 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       <div className={`sidebar-overlay ${isMobileOpen ? 'mobile-open' : ''}`} onClick={onCloseMobile} />
       <div className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar__brand">
-        <img src={logo} alt="Coollab Logo" className="sidebar__logo" />
-        {!collapsed && <span className="sidebar__brand-name">Coollab</span>}
-      </div>
-      <div className="sidebar__explorer-header">
+          <img src={logo} alt="Coollab Logo" className="sidebar__logo" />
+          {!collapsed && <span className="sidebar__brand-name">Coollab</span>}
+        </div>
+        <div className="sidebar__explorer-header">
+          {!collapsed && (
+            <div className="sidebar__explorer-actions">
+              {currentProjectId && (
+                <>
+                  {/* Hide creation buttons when admin is viewing a student workspace OR in admin dashboard mode */}
+                  {!viewingStudentId && !(isAdmin && projectType === 'activity') && (
+                    <>
+                      <button className="sidebar__action-btn" onClick={() => { setIsCreatingFile(true); setNewFileName('New Document'); }} title="New document">
+                        <FileEdit size={16} />
+                      </button>
+                      <button className="sidebar__action-btn" onClick={handleCreateCanvas} title="New Canvas">
+                        <LayoutGrid size={16} />
+                      </button>
+                      <button className="sidebar__action-btn" onClick={handleCreateBase} title="New Base">
+                        <Database size={16} />
+                      </button>
+                      <button className="sidebar__action-btn" onClick={() => setIsCreatingFolder(true)} title="New folder">
+                        <FolderPlus size={16} />
+                      </button>
+                    </>
+                  )}
+                  {/* Activity Settings — only for admin in activity projects, and only when not viewing student */}
+                  {isAdmin && projectType === 'activity' && !viewingStudentId && (
+                    <button className="sidebar__action-btn" onClick={() => setShowActivitySettings(true)} title="Activity Project Settings">
+                      <Settings size={16} color="#7c6bf0" />
+                    </button>
+                  )}
+                  {/* Sort and Expand — always available unless in admin dashboard mode */}
+                  {!(isAdmin && projectType === 'activity' && !viewingStudentId) && (
+                    <>
+                      <button className="sidebar__action-btn" onClick={handleToggleSort} title={`Sort: ${sortOrder}`}>
+                        <ArrowUpDown size={16} />
+                      </button>
+                      <button className="sidebar__action-btn" onClick={handleToggleExpandAll} title="Expand/collapse all">
+                        <ChevronsUpDown size={16} />
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          <button onClick={onToggleCollapse} className="sidebar__toggle"
+            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}>
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
+        </div>
+
         {!collapsed && (
-          <div className="sidebar__explorer-actions">
-            {currentProjectId && (
-              <>
-                {/* Hide creation buttons when admin is viewing a student workspace OR in admin dashboard mode */}
-                {!viewingStudentId && !(isAdmin && projectType === 'activity') && (
-                  <>
-                    <button className="sidebar__action-btn" onClick={() => { setIsCreatingFile(true); setNewFileName('New Document'); }} title="New document">
-                      <FileEdit size={16} />
-                    </button>
-                    <button className="sidebar__action-btn" onClick={handleCreateCanvas} title="New Canvas">
-                      <LayoutGrid size={16} />
-                    </button>
-                    <button className="sidebar__action-btn" onClick={handleCreateBase} title="New Base">
-                      <Database size={16} />
-                    </button>
-                    <button className="sidebar__action-btn" onClick={() => setIsCreatingFolder(true)} title="New folder">
-                      <FolderPlus size={16} />
-                    </button>
-                  </>
-                )}
-                {/* Activity Settings — only for admin in activity projects, and only when not viewing student */}
-                {isAdmin && projectType === 'activity' && !viewingStudentId && (
-                  <button className="sidebar__action-btn" onClick={() => setShowActivitySettings(true)} title="Activity Project Settings">
-                    <Settings size={16} color="#7c6bf0" />
-                  </button>
-                )}
-                {/* Sort and Expand — always available unless in admin dashboard mode */}
-                {!(isAdmin && projectType === 'activity' && !viewingStudentId) && (
-                  <>
-                    <button className="sidebar__action-btn" onClick={handleToggleSort} title={`Sort: ${sortOrder}`}>
-                      <ArrowUpDown size={16} />
-                    </button>
-                    <button className="sidebar__action-btn" onClick={handleToggleExpandAll} title="Expand/collapse all">
-                      <ChevronsUpDown size={16} />
-                    </button>
-                  </>
-                )}
-              </>
+          <div
+            className={`sidebar__documents file-tree ${dropIndicator?.id === 'root' ? 'sidebar__documents--drop-target' : ''}`}
+            onDragEnter={e => handleDragEnter(e, 'root')}
+            onDragLeave={e => handleDragLeave(e, 'root')}
+            onDragOver={e => handleDragOver(e, 'root')}
+            onDrop={e => handleDrop(e, 'root')}
+          >
+            <button
+              className="sidebar__doc-item sidebar__doc-item--nav"
+              onClick={() => {
+                setCurrentProjectId(null);
+                setCurrentNoteId(null);
+              }}
+            >
+              <Home size={16} className="sidebar__doc-icon" />
+              <span className="sidebar__doc-name">Back to Dashboard</span>
+            </button>
+
+            {projectType === 'activity' && currentProjectId && (
+              <InstructionsPanel projectId={currentProjectId} readOnly={!!viewingStudentId} />
+            )}
+
+            {viewingStudentId && (
+              <div style={{ padding: '8px 12px', background: 'rgba(124, 107, 240, 0.1)', borderRadius: '6px', margin: '8px', border: '1px solid rgba(124, 107, 240, 0.2)' }}>
+                <div style={{ fontSize: '11px', color: '#9485f5', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Viewing Student</div>
+                <div style={{ fontSize: '13px', color: '#fff', fontWeight: 500 }}>{projectMembers.find(m => m.uid === viewingStudentId)?.name || 'Unknown'}</div>
+              </div>
+            )}
+
+            {isCreatingFolder && (
+              <div style={{ padding: '4px 8px' }}>
+                <input
+                  type="text"
+                  placeholder="Folder name..."
+                  ref={(el) => {
+                    if (el) setTimeout(() => el.focus(), 50);
+                  }}
+                  value={newFolderName}
+                  onChange={e => { e.stopPropagation(); setNewFolderName(e.target.value); }}
+                  onKeyDown={e => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') handleCreateNewFolder();
+                    if (e.key === 'Escape') { setIsCreatingFolder(false); setNewFolderName(''); }
+                  }}
+                  onKeyUp={e => e.stopPropagation()}
+                  onBlur={() => newFolderName.trim() ? handleCreateNewFolder() : setIsCreatingFolder(false)}
+                  style={{
+                    width: '100%', padding: '4px 8px', borderRadius: '4px',
+                    background: '#0d0d1a', border: '1px solid #1e1e3f',
+                    color: '#fff', fontSize: '13px', outline: 'none'
+                  }}
+                />
+              </div>
+            )}
+
+            {isCreatingFile && (
+              <div style={{ padding: '4px 8px' }}>
+                <input
+                  type="text"
+                  placeholder="Document name..."
+                  ref={(el) => {
+                    if (el) setTimeout(() => el.focus(), 50);
+                  }}
+                  value={newFileName}
+                  onChange={e => { e.stopPropagation(); setNewFileName(e.target.value); }}
+                  onKeyDown={e => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') handleCreateNewFile();
+                    if (e.key === 'Escape') { setIsCreatingFile(false); setNewFileName(''); }
+                  }}
+                  onKeyUp={e => e.stopPropagation()}
+                  onBlur={() => newFileName.trim() ? handleCreateNewFile() : setIsCreatingFile(false)}
+                  style={{
+                    width: '100%', padding: '4px 8px', borderRadius: '4px',
+                    background: '#0d0d1a', border: '1px solid #1e1e3f',
+                    color: '#fff', fontSize: '13px', outline: 'none'
+                  }}
+                />
+              </div>
+            )}
+
+            {loadingDocs ? (
+              <div className="sidebar__loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', gap: '12px' }}>
+                <div className="sidebar__loading-spinner" style={{ width: '24px', height: '24px', border: '2px solid rgba(124, 107, 240, 0.1)', borderTopColor: '#7c6bf0', borderRadius: '50%', animation: 'spin 1.5s linear infinite' }} />
+                <span style={{ fontSize: '12px', color: '#a0a4b8' }}>Fetching workspace...</span>
+                <style>{`
+                @keyframes spin { to { transform: rotate(360deg); } }
+              `}</style>
+              </div>
+            ) : allDocs.length > 0 ? renderDocs : (
+              <div className="sidebar__empty">No documents yet.</div>
             )}
           </div>
         )}
-        <button onClick={onToggleCollapse} className="sidebar__toggle"
-          title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}>
-          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-        </button>
-      </div>
 
-      {!collapsed && (
-        <div
-          className={`sidebar__documents file-tree ${dropIndicator?.id === 'root' ? 'sidebar__documents--drop-target' : ''}`}
-          onDragEnter={e => handleDragEnter(e, 'root')}
-          onDragLeave={e => handleDragLeave(e, 'root')}
-          onDragOver={e => handleDragOver(e, 'root')}
-          onDrop={e => handleDrop(e, 'root')}
-        >
-          <button 
-            className="sidebar__doc-item sidebar__doc-item--nav"
-            onClick={() => {
-              setCurrentProjectId(null);
-              setCurrentNoteId(null);
-            }}
-          >
-            <Home size={16} className="sidebar__doc-icon" />
-            <span className="sidebar__doc-name">Back to Dashboard</span>
-          </button>
+        {/* Sidebar Footer */}
+        <div className="sidebar__footer">
+          <div className="sidebar__footer-content">
+            <button
+              className="sidebar__user"
+              onClick={() => setShowSettingsModal(true)}
+              title="Profile Settings"
+            >
+              <div className="sidebar__user-avatar">
+                {getUserAvatar({ ...profile, providerData: user?.providerData, photoURL: user?.photoURL }) ? (
+                  <img
+                    src={getUserAvatar({ ...profile, providerData: user?.providerData, photoURL: user?.photoURL })!}
+                    alt={displayName}
+                    className="sidebar__user-avatar-img"
+                  />
+                ) : initials}
+              </div>
+              {!collapsed && <span className="sidebar__user-name">{displayName}</span>}
+            </button>
 
-          {projectType === 'activity' && currentProjectId && (
-            <InstructionsPanel projectId={currentProjectId} readOnly={!!viewingStudentId} />
-          )}
-
-          {viewingStudentId && (
-            <div style={{ padding: '8px 12px', background: 'rgba(124, 107, 240, 0.1)', borderRadius: '6px', margin: '8px', border: '1px solid rgba(124, 107, 240, 0.2)' }}>
-              <div style={{ fontSize: '11px', color: '#9485f5', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Viewing Student</div>
-              <div style={{ fontSize: '13px', color: '#fff', fontWeight: 500 }}>{projectMembers.find(m => m.uid === viewingStudentId)?.name || 'Unknown'}</div>
-            </div>
-          )}
-
-          {isCreatingFolder && (
-            <div style={{ padding: '4px 8px' }}>
-              <input
-                type="text" 
-                placeholder="Folder name..."
-                ref={(el) => {
-                  if (el) setTimeout(() => el.focus(), 50);
-                }}
-                value={newFolderName}
-                onChange={e => { e.stopPropagation(); setNewFolderName(e.target.value); }}
-                onKeyDown={e => {
-                  e.stopPropagation();
-                  if (e.key === 'Enter') handleCreateNewFolder();
-                  if (e.key === 'Escape') { setIsCreatingFolder(false); setNewFolderName(''); }
-                }}
-                onKeyUp={e => e.stopPropagation()}
-                onBlur={() => newFolderName.trim() ? handleCreateNewFolder() : setIsCreatingFolder(false)}
-                style={{
-                  width: '100%', padding: '4px 8px', borderRadius: '4px',
-                  background: '#0d0d1a', border: '1px solid #1e1e3f',
-                  color: '#fff', fontSize: '13px', outline: 'none'
-                }}
-              />
-            </div>
-          )}
-
-          {isCreatingFile && (
-            <div style={{ padding: '4px 8px' }}>
-              <input
-                type="text" 
-                placeholder="Document name..."
-                ref={(el) => {
-                  if (el) setTimeout(() => el.focus(), 50);
-                }}
-                value={newFileName}
-                onChange={e => { e.stopPropagation(); setNewFileName(e.target.value); }}
-                onKeyDown={e => {
-                  e.stopPropagation();
-                  if (e.key === 'Enter') handleCreateNewFile();
-                  if (e.key === 'Escape') { setIsCreatingFile(false); setNewFileName(''); }
-                }}
-                onKeyUp={e => e.stopPropagation()}
-                onBlur={() => newFileName.trim() ? handleCreateNewFile() : setIsCreatingFile(false)}
-                style={{
-                  width: '100%', padding: '4px 8px', borderRadius: '4px',
-                  background: '#0d0d1a', border: '1px solid #1e1e3f',
-                  color: '#fff', fontSize: '13px', outline: 'none'
-                }}
-              />
-            </div>
-          )}
-
-          {loadingDocs ? (
-            <div className="sidebar__loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', gap: '12px' }}>
-              <div className="sidebar__loading-spinner" style={{ width: '24px', height: '24px', border: '2px solid rgba(124, 107, 240, 0.1)', borderTopColor: '#7c6bf0', borderRadius: '50%', animation: 'spin 1.5s linear infinite' }} />
-              <span style={{ fontSize: '12px', color: '#a0a4b8' }}>Fetching workspace...</span>
-              <style>{`
-                @keyframes spin { to { transform: rotate(360deg); } }
-              `}</style>
-            </div>
-          ) : allDocs.length > 0 ? renderDocs : (
-            <div className="sidebar__empty">No documents yet.</div>
-          )}
+            {!collapsed && (
+              <div className="sidebar__footer-actions">
+                <button className="sidebar__footer-btn" onClick={() => setShowSettingsModal(true)}>
+                  <Settings size={14} />
+                  <span>Settings</span>
+                </button>
+                <button className="sidebar__footer-btn sidebar__footer-btn--logout" onClick={() => setShowLogoutConfirm(true)}>
+                  <LogOut size={14} />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Sidebar Footer */}
-      <div className="sidebar__footer">
-        <div className="sidebar__footer-content">
-          <button 
-            className="sidebar__user" 
-            onClick={() => setShowSettingsModal(true)}
-            title="Profile Settings"
-          >
-            <div className="sidebar__user-avatar">
-              {getUserAvatar({ ...profile, providerData: user?.providerData, photoURL: user?.photoURL }) ? (
-                <img 
-                  src={getUserAvatar({ ...profile, providerData: user?.providerData, photoURL: user?.photoURL })!} 
-                  alt={displayName} 
-                  className="sidebar__user-avatar-img" 
-                />
-              ) : initials}
-            </div>
-            {!collapsed && <span className="sidebar__user-name">{displayName}</span>}
-          </button>
-          
-          {!collapsed && (
-            <div className="sidebar__footer-actions">
-              <button className="sidebar__footer-btn" onClick={() => setShowSettingsModal(true)}>
-                <Settings size={14} />
-                <span>Settings</span>
-              </button>
-              <button className="sidebar__footer-btn sidebar__footer-btn--logout" onClick={() => setShowLogoutConfirm(true)}>
-                <LogOut size={14} />
-                <span>Log Out</span>
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {contextMenu && !viewingStudentId && (
-        <div
-          className="sidebar-context-menu"
-          onMouseDown={e => e.stopPropagation()}
-          style={{
-            position: 'fixed', top: contextMenu.y, left: contextMenu.x,
-            background: '#0a0a14', border: '1px solid #1e1e3f', borderRadius: '6px',
-            padding: '4px', zIndex: 10000, display: 'flex', flexDirection: 'column',
-            minWidth: '130px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)'
-          }}
-        >
-          <button type="button"
-            onClick={e => { e.stopPropagation(); startRenaming(contextMenu.doc!); }}
+        {contextMenu && !viewingStudentId && (
+          <div
+            className="sidebar-context-menu"
+            onMouseDown={e => e.stopPropagation()}
             style={{
-              padding: '8px 12px', textAlign: 'left', background: 'transparent',
-              border: 'none', color: '#e2e8f0', cursor: 'pointer', borderRadius: '4px', fontSize: '13px'
+              position: 'fixed', top: contextMenu.y, left: contextMenu.x,
+              background: '#0a0a14', border: '1px solid #1e1e3f', borderRadius: '6px',
+              padding: '4px', zIndex: 10000, display: 'flex', flexDirection: 'column',
+              minWidth: '130px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = '#1e1e3f'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >Rename</button>
-          {contextMenu.doc?.ownerId === user?.uid && (
+          >
             <button type="button"
-              onClick={e => { e.stopPropagation(); handleDeleteDoc(contextMenu.doc!); }}
+              onClick={e => { e.stopPropagation(); startRenaming(contextMenu.doc!); }}
               style={{
                 padding: '8px 12px', textAlign: 'left', background: 'transparent',
-                border: 'none', color: '#ff4d4f', cursor: 'pointer', borderRadius: '4px', fontSize: '13px'
+                border: 'none', color: '#e2e8f0', cursor: 'pointer', borderRadius: '4px', fontSize: '13px'
               }}
               onMouseEnter={e => e.currentTarget.style.background = '#1e1e3f'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-            >Delete</button>
-          )}
-        </div>
-      )}
+            >Rename</button>
+            {contextMenu.doc?.ownerId === user?.uid && (
+              <button type="button"
+                onClick={e => { e.stopPropagation(); handleDeleteDoc(contextMenu.doc!); }}
+                style={{
+                  padding: '8px 12px', textAlign: 'left', background: 'transparent',
+                  border: 'none', color: '#ff4d4f', cursor: 'pointer', borderRadius: '4px', fontSize: '13px'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#1e1e3f'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >Delete</button>
+            )}
+          </div>
+        )}
 
-      {memberContextMenu && (
-        <div
-          className="sidebar-context-menu"
-          onMouseDown={e => e.stopPropagation()}
-          style={{
-            position: 'fixed', top: memberContextMenu.y, left: memberContextMenu.x,
-            background: '#0a0a14', border: '1px solid #1e1e3f', borderRadius: '6px',
-            padding: '4px', zIndex: 10001, display: 'flex', flexDirection: 'column',
-            minWidth: '160px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)'
-          }}
-        >
-          <button type="button"
-            onClick={e => { e.stopPropagation(); handleMemberKick(memberContextMenu.memberUid); }}
+        {memberContextMenu && (
+          <div
+            className="sidebar-context-menu"
+            onMouseDown={e => e.stopPropagation()}
             style={{
-              padding: '8px 12px', textAlign: 'left', background: 'transparent',
-              border: 'none', color: '#ff4d4f', cursor: 'pointer', borderRadius: '4px', fontSize: '13px',
-              fontWeight: 500
+              position: 'fixed', top: memberContextMenu.y, left: memberContextMenu.x,
+              background: '#0a0a14', border: '1px solid #1e1e3f', borderRadius: '6px',
+              padding: '4px', zIndex: 10001, display: 'flex', flexDirection: 'column',
+              minWidth: '160px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-          >Remove from Project</button>
-        </div>
-      )}
-      {/* Logout Confirmation Dialog */}
-      {showLogoutConfirm && (
-        <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
-          <div className="modal-content modal-content--small" onClick={e => e.stopPropagation()}>
-            <h3>Log out?</h3>
-            <p>Are you sure you want to log out?</p>
-            <div className="modal-actions">
-              <button className="btn btn--secondary" onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
-              <button className="btn btn--danger" onClick={async () => {
-                try {
-                  sessionStorage.setItem('explicitly_logged_out', 'true');
-                  useAppStore.getState().reset();
-                  await YjsService.getInstance().clearAllPersistence();
-                  await FirebaseService.getInstance().auth.signOut();
-                  window.location.hash = '#/login';
-                } catch (err) {
-                  console.error('[Sidebar] Logout failed:', err);
-                  window.location.reload();
-                }
-              }}>Log out</button>
+          >
+            <button type="button"
+              onClick={e => { e.stopPropagation(); handleMemberKick(memberContextMenu.memberUid); }}
+              style={{
+                padding: '8px 12px', textAlign: 'left', background: 'transparent',
+                border: 'none', color: '#ff4d4f', cursor: 'pointer', borderRadius: '4px', fontSize: '13px',
+                fontWeight: 500
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            >Remove from Project</button>
+          </div>
+        )}
+        {/* Logout Confirmation Dialog */}
+        {showLogoutConfirm && (
+          <div className="modal-overlay" onClick={() => setShowLogoutConfirm(false)}>
+            <div className="modal-content modal-content--small" onClick={e => e.stopPropagation()}>
+              <h3>Log out?</h3>
+              <p>Are you sure you want to log out?</p>
+              <div className="modal-actions">
+                <button className="btn btn--secondary" onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
+                <button className="btn btn--danger" onClick={async () => {
+                  try {
+                    sessionStorage.setItem('explicitly_logged_out', 'true');
+                    useAppStore.getState().reset();
+                    await YjsService.getInstance().clearAllPersistence();
+                    await FirebaseService.getInstance().auth.signOut();
+                    window.location.hash = '#/login';
+                  } catch (err) {
+                    console.error('[Sidebar] Logout failed:', err);
+                    window.location.reload();
+                  }
+                }}>Log out</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Settings Modal */}
-      <SettingsModal 
-        isOpen={showSettingsModal} 
-        onClose={() => setShowSettingsModal(false)} 
-      />
-
-      {/* Activity Project Settings Modal */}
-      {currentProjectId && (
-        <ActivityProjectSettings
-          isOpen={showActivitySettings}
-          onClose={() => setShowActivitySettings(false)}
-          projectId={currentProjectId}
+        {/* Settings Modal */}
+        <SettingsModal
+          isOpen={showSettingsModal}
+          onClose={() => setShowSettingsModal(false)}
         />
-      )}
 
-      {deleteError && (
-        <div style={{
-          position: 'absolute', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-          background: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '4px',
-          zIndex: 1000, fontSize: '13px', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-        }}>
-          {deleteError}
-        </div>
-      )}
-    </div>
+        {/* Activity Project Settings Modal */}
+        {currentProjectId && (
+          <ActivityProjectSettings
+            isOpen={showActivitySettings}
+            onClose={() => setShowActivitySettings(false)}
+            projectId={currentProjectId}
+          />
+        )}
+
+        {deleteError && (
+          <div style={{
+            position: 'absolute', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+            background: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '4px',
+            zIndex: 1000, fontSize: '13px', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+          }}>
+            {deleteError}
+          </div>
+        )}
+      </div>
     </>
   );
 });
