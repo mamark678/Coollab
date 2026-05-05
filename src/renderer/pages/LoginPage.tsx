@@ -11,7 +11,6 @@ import {
   fetchSignInMethodsForEmail,
   EmailAuthProvider,
   linkWithCredential,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult
 } from 'firebase/auth';
@@ -168,57 +167,37 @@ export const LoginPage: React.FC = () => {
     if (lockoutTime > 0) return;
     setLoading(true);
     setError(null);
-    setDebugLog([]);
 
     const isMobile = Capacitor.isNativePlatform();
-    const platformLabel = isMobile ? 'Capacitor (Android)' : (window.electronAPI ? 'Electron' : 'Web Browser');
-    console.log('[AUTH] Platform detected:', platformLabel);
-    setDebugLog(prev => [...prev, `Platform: ${platformLabel}`]);
-
     const auth = FirebaseService.getInstance().auth;
     const googleProvider = new GoogleAuthProvider();
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    console.log('[AUTH] VITE_GOOGLE_CLIENT_ID present:', !!clientId);
-    setDebugLog(prev => [...prev, `Client ID set: ${!!clientId}`]);
-
-    if (clientId) {
-      googleProvider.setCustomParameters({ client_id: clientId });
-    }
-
     if (isMobile) {
-      // Native Google Sign-In via @capawesome/capacitor-google-sign-in
-      // signInWithPopup hangs in Android WebViews - use native system account picker instead
-      console.log('[AUTH] Starting native GoogleSignIn...');
-      setDebugLog(prev => [...prev, 'Calling native GoogleSignIn.signIn()...']);
       try {
-        await GoogleSignIn.initialize({ clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '' });
-        setDebugLog(prev => [...prev, 'Plugin initialized']);
-
-        const response = await GoogleSignIn.signIn();
-        console.log('[AUTH] signIn response, has idToken:', !!response.idToken);
-        setDebugLog(prev => [...prev, 'Got idToken: ' + String(!!response.idToken)]);
-
-        if (!response.idToken) throw new Error('No idToken from native Google Sign-In');
-
-        const credential = GoogleAuthProvider.credential(response.idToken);
-        const result = await signInWithCredential(auth, credential);
-        console.log('[AUTH] signInWithCredential OK:', result.user && result.user.email);
-        setDebugLog(prev => [...prev, 'Firebase OK - user: ' + String(result.user && result.user.email)]);
-
-        await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
-        setDebugLog(prev => [...prev, 'Profile saved, navigating...']);
+        // Initialize the plugin
+        await GoogleSignIn.initialize({
+          clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID
+        });
+        
+        // Trigger native Google Sign-In dialog
+        const result = await GoogleSignIn.signIn();
+        
+        if (!result.idToken) {
+          throw new Error('No idToken returned from Google Sign-In');
+        }
+        
+        // Exchange with Firebase
+        const credential = GoogleAuthProvider.credential(result.idToken);
+        const userCredential = await signInWithCredential(auth, credential);
+        await FirebaseService.getInstance().handleGoogleSignInResult(userCredential.user);
         setFailedAttempts(0);
         navigate('/');
       } catch (err: any) {
-        const e = err;
-        console.error('[AUTH] Native sign-in error:', e);
-        const debugMsg = 'ERROR - code: ' + String(e.code || 'none') + ' | msg: ' + String(e.message || 'unknown');
-        setDebugLog(prev => [...prev, debugMsg]);
-        setError('Auth Error: ' + String(e.code || '') + ' - ' + String(e.message || 'Unknown error'));
+        setError(`Google Sign-In failed: ${err.message}`);
         setLoading(false);
       }
-        } else {
+    } else {
+      // Electron desktop flow - keep unchanged
       const electronAPI = window.electronAPI;
       if (electronAPI) {
         console.log('[AUTH] Using Electron IPC auth flow');
