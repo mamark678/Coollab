@@ -180,7 +180,9 @@ export const LoginPage: React.FC = () => {
         });
         
         // Trigger native Google Sign-In dialog
-        const result = await GoogleSignIn.signIn();
+        const result = await GoogleSignIn.signIn({
+          nonce: Math.random().toString(36).substring(2)
+        });
         
         if (!result.idToken) {
           throw new Error('No idToken returned from Google Sign-In');

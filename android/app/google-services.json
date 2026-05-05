@@ -8,41 +8,20 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:251672582118:android:d6f06eb434aa80cfb72827",
-        "android_client_info": {
-          "package_name": "com.collab.app"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "251672582118-n3sip0i77t89hlld431o93o1rgvs0fgs.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyC7TX_C4raACS3FJzO0_vhiRDHULjCiCbQ"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "251672582118-n3sip0i77t89hlld431o93o1rgvs0fgs.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:251672582118:android:9a970d3145d8c178b72827",
         "android_client_info": {
           "package_name": "com.coollab.app"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "251672582118-iaq1abjlfs2k7tg6qp3f1kl7660icotq.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.coollab.app",
+            "certificate_hash": "c2620137e76032e0c448a7bcf4459b3fb87749fe"
+          }
+        },
         {
           "client_id": "251672582118-n3sip0i77t89hlld431o93o1rgvs0fgs.apps.googleusercontent.com",
           "client_type": 3
