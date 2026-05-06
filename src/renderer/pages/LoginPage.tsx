@@ -171,20 +171,30 @@ export const LoginPage: React.FC = () => {
 
     if (isMobile) {
       try {
+        console.error('COOLLAB_AUTH: Starting Google Sign-In');
         const clientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
-        setDebugLog(prev => [...prev, `ClientID: ${clientId?.substring(0, 20)}...`]);
+        
+        // Log Client ID format checks
+        setDebugLog(prev => [...prev, `ClientID ends with: ...${clientId?.slice(-30)}`]);
+        setDebugLog(prev => [...prev, `ClientID valid format: ${clientId?.endsWith('.apps.googleusercontent.com')}`]);
+        
+        // Check if plugin is available
+        console.log('[GOOGLE] Plugin available:', typeof GoogleSignIn);
+        setDebugLog(prev => [...prev, `Plugin type: ${typeof GoogleSignIn}`]);
 
-        await GoogleSignIn.initialize({
+        // Log full initialize result
+        const initResult = await GoogleSignIn.initialize({
           clientId: import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
         });
-        console.log('[GOOGLE] Initialize success');
-        setDebugLog(prev => [...prev, 'Initialize: OK']);
+        console.log('[GOOGLE] Init result:', JSON.stringify(initResult));
+        setDebugLog(prev => [...prev, `Init result: ${JSON.stringify(initResult)}`]);
 
+        setDebugLog(prev => [...prev, 'Calling signIn now...']);
         const result = await GoogleSignIn.signIn({
           nonce: Math.random().toString(36).substring(2)
         });
         console.log('[GOOGLE] SignIn result:', JSON.stringify(result));
-        setDebugLog(prev => [...prev, `SignIn result: ${JSON.stringify(result)}`]);
+        setDebugLog(prev => [...prev, `signIn raw result: ${JSON.stringify(result)}`]);
 
         if (!result.idToken) {
           throw new Error('No idToken returned from Google Sign-In');
@@ -197,6 +207,7 @@ export const LoginPage: React.FC = () => {
         setFailedAttempts(0);
         navigate('/');
       } catch (err: any) {
+        console.error('COOLLAB_AUTH: ' + JSON.stringify(err));
         console.error('[GOOGLE] Full error:', JSON.stringify(err));
         console.error('[GOOGLE] Error code:', err.code);
         console.error('[GOOGLE] Error message:', err.message);
