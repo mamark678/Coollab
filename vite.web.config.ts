@@ -20,6 +20,13 @@ export default defineConfig({
                     'vendor': ['react', 'react-dom', 'react-router-dom', 'zustand'],
                 }
             }
+        },
+        minify: 'terser',
+        terserOptions: {
+            compress: {
+                drop_console: true,
+                drop_debugger: true
+            }
         }
     },
     resolve: {

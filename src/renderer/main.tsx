@@ -41,36 +41,37 @@ window.confirm = function(message?: string): boolean {
   return result;
 };
 
+const isMobile = window.location.protocol !== 'electron:' && !(window as any).electronAPI;
+const AppWrapper = isMobile ? React.Fragment : React.StrictMode;
+
 const rootEl = document.getElementById('root')
 if (!rootEl) {
   throw new Error('[main.tsx] #root element not found in index.html')
 }
 
 ReactDOM.createRoot(rootEl).render(
-  <React.StrictMode>
+  <AppWrapper>
     <AuthProvider>
       <NotificationProvider>
         <HashRouter>
-          <AnimatePresence mode="wait">
-            <React.Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-                <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
-                <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-                
-                {/* Share link acceptance — requires auth or guest */}
-                <Route path="/share/:token" element={<ShareAcceptPage />} />
-    
-                {/* Guest view for unauthenticated access */}
-                <Route path="/guest/:projectId" element={<GuestAppPage />} />
-    
-                {/* Main Application - Protected Route */}
-                <Route path="/" element={<ProtectedRoute><App /></ProtectedRoute>} />
-              </Routes>
-            </React.Suspense>
-          </AnimatePresence>
+          <React.Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+              <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+              <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+              
+              {/* Share link acceptance — requires auth or guest */}
+              <Route path="/share/:token" element={<ShareAcceptPage />} />
+  
+              {/* Guest view for unauthenticated access */}
+              <Route path="/guest/:projectId" element={<GuestAppPage />} />
+  
+              {/* Main Application - Protected Route */}
+              <Route path="/" element={<ProtectedRoute><App /></ProtectedRoute>} />
+            </Routes>
+          </React.Suspense>
         </HashRouter>
       </NotificationProvider>
     </AuthProvider>
-  </React.StrictMode>
+  </AppWrapper>
 )

@@ -270,12 +270,11 @@ export function App() {
     }
 
     // Hide splash after initial load
-    const timer = setTimeout(() => setIsInitializingApp(false), 2000);
+    setIsInitializingApp(false);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
-      clearTimeout(timer);
     };
   }, [addNotification]);
 
@@ -1086,38 +1085,41 @@ export function App() {
   return (
     <div className={`app-layout ${viewingStudentId ? 'app-layout--viewing-student' : ''}`}>
       <PresenceTracker />
-      <AnimatePresence>
-        {isInitializingApp && (
-          <motion.div
-            initial={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="splash-screen"
-            style={{
-              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-              background: '#0d0d1a', display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', zIndex: 20000
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              style={{ textAlign: 'center' }}
-            >
-              <div style={{
-                width: '64px', height: '64px', background: 'var(--accent-primary)',
-                borderRadius: '16px', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', marginBottom: '24px', margin: '0 auto'
-              }}>
-                <FileText size={32} color="#fff" />
-              </div>
-              <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>Coollab</h1>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Preparing your collaborative workspace...</p>
-              <div className="skeleton" style={{ width: '120px', height: '4px', marginTop: '24px', borderRadius: '2px' }} />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {isInitializingApp && (
+        <div 
+          className="splash-screen"
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: '#0d0d1a', display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', zIndex: 20000,
+            animation: 'fadeOut 0.5s ease-out forwards',
+            animationDelay: '0.5s'
+          }}
+        >
+          <div style={{ textAlign: 'center', animation: 'scaleIn 0.5s ease-out' }}>
+            <div style={{
+              width: '64px', height: '64px', background: 'var(--accent-primary)',
+              borderRadius: '16px', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', marginBottom: '24px', margin: '0 auto'
+            }}>
+              <FileText size={32} color="#fff" />
+            </div>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>Coollab</h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Preparing your collaborative workspace...</p>
+            <div className="skeleton" style={{ width: '120px', height: '4px', marginTop: '24px', borderRadius: '2px' }} />
+          </div>
+          <style>{`
+            @keyframes fadeOut {
+              from { opacity: 1; }
+              to { opacity: 0; visibility: hidden; }
+            }
+            @keyframes scaleIn {
+              from { transform: scale(0.8); opacity: 0; }
+              to { transform: scale(1); opacity: 1; }
+            }
+          `}</style>
+        </div>
+      )}
 
       {!isOnline && (
         <div className="offline-banner">

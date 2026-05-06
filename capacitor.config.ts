@@ -10,7 +10,8 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: true,
     captureInput: true,
-    webContentsDebuggingEnabled: false
+    webContentsDebuggingEnabled: false,
+    initialFocus: true
   },
   plugins: {
     GoogleSignIn: {
