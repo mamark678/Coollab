@@ -112,6 +112,9 @@ async function callGroq(
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
+  window.dispatchEvent(new CustomEvent('ai-error', { 
+    detail: { title: 'AI Service Busy', message: 'Maximum retries exceeded. Please try again later.', type: 'warning' }
+  }));
   throw new Error('Maximum retries exceeded');
 }
 

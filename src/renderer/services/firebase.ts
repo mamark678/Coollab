@@ -16,9 +16,11 @@ import {
   limit,
   writeBatch,
   runTransaction,
-  enableIndexedDbPersistence,
   serverTimestamp,
-  updateDoc
+  updateDoc,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
 } from 'firebase/firestore';
 import { 
   getAuth, 
@@ -94,19 +96,15 @@ export class FirebaseService {
     };
 
     this.app = initializeApp(firebaseConfig);
-    this.db = getFirestore(this.app);
-    this.auth = getAuth(this.app);
-
-    // Enable offline persistence (Section 1)
-    enableIndexedDbPersistence(this.db).catch((err) => {
-      if (err.code === 'failed-precondition') {
-        // Multiple tabs open, persistence can only be enabled in one tab at a a time.
-        console.warn('[FirebaseService] Persistence failed: multiple tabs open');
-      } else if (err.code === 'unimplemented') {
-        // The current browser does not support all of the features required to enable persistence
-        console.warn('[FirebaseService] Persistence failed: browser not supported');
-      }
+    
+    // Modern persistence setup (Section 1) - Resolves deprecation warning
+    this.db = initializeFirestore(this.app, {
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
     });
+
+    this.auth = getAuth(this.app);
 
     // Set persistence to LOCAL so users stay logged in (Section 2)
     setPersistence(this.auth, browserLocalPersistence).catch(err => {
@@ -339,8 +337,9 @@ export class FirebaseService {
 
   /**
    * Saves a note in either global or individual workspace.
+   * Includes internal retry logic for flaky connections.
    */
-  public async saveNote(id: string, updateData: Partial<DocumentSchema>, projectId?: string, userId?: string): Promise<void> {
+  public async saveNote(id: string, updateData: Partial<DocumentSchema>, projectId?: string, userId?: string, retries = 3): Promise<void> {
     const now = Date.now();
     let docRef;
 
@@ -353,9 +352,20 @@ export class FirebaseService {
       docRef = doc(this.db, 'notes', id);
     }
     
-    const batch = writeBatch(this.db);
-    batch.set(docRef, { ...updateData, updatedAt: now }, { merge: true });
-    await batch.commit();
+    try {
+      const batch = writeBatch(this.db);
+      batch.set(docRef, { ...updateData, updatedAt: now }, { merge: true });
+      await batch.commit();
+    } catch (err) {
+      if (retries > 0) {
+        const delay = (4 - retries) * 1000;
+        console.warn(`[FirebaseService] Save failed, retrying in ${delay}ms...`, err);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.saveNote(id, updateData, projectId, userId, retries - 1);
+      }
+      console.error('[FirebaseService] saveNote failed after retries:', err);
+      throw err;
+    }
   }
 
   /**
@@ -635,7 +645,17 @@ export class FirebaseService {
         snap.forEach((d) => items.push({ ...(d.data() as NotificationItem), id: d.id }));
         callback(items);
       },
-      (error) => console.error(`[FirebaseService] Error listening to notifications for ${userId}:`, error)
+      (error) => {
+        console.error(`[FirebaseService] Error listening to notifications for ${userId}:`, error);
+        // Dispatch custom event to notify UI without circular dependency
+        window.dispatchEvent(new CustomEvent('firebase-error', { 
+          detail: { 
+            title: 'Notification Error', 
+            message: 'Permission denied or connection lost while loading notifications.',
+            type: 'error'
+          } 
+        }));
+      }
     );
   }
 

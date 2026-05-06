@@ -11,6 +11,7 @@ import { ShareDialog } from './components/ShareDialog/ShareDialog'
 import { Sidebar } from './components/Sidebar/Sidebar'
 import { Toolbar } from './components/Toolbar/Toolbar'
 import { FirebaseService } from './services/firebase'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import {
   Eye,
@@ -27,6 +28,7 @@ import {
   Sparkles,
   Target,
   Trophy,
+  WifiOff,
   X
 } from 'lucide-react'
 import { ActivityAIAgent } from './components/Activities/ActivityAIAgent'
@@ -61,6 +63,7 @@ import { EvaluationResult, StudentEvaluationService } from './services/StudentEv
 import { useAppStore } from './store/useAppStore'
 import { useShallow } from 'zustand/react/shallow'
 import { getUserAvatar } from './utils/avatar.utils'
+import { useNotifications } from './context/NotificationContext'
 
 // Stable random identity per app session (re-renders won't change it)
 const SESSION_COLORS = ['#7c6bf0', '#6dd49e', '#4ea1f7', '#e67a7a', '#e6c96e', '#9485f5']
@@ -175,6 +178,33 @@ export function App() {
 
   // Activity Trigger Service persistence
   const triggerServiceRef = useRef<ActivityFlowService | null>(null)
+  const { addNotification } = useNotifications();
+  const [isInitializingApp, setIsInitializingApp] = useState(true);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => {
+      setIsOnline(false);
+      addNotification({ message: 'Working offline — changes will sync when reconnected', type: 'warning', duration: Infinity });
+    };
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Initial check
+    if (!navigator.onLine) {
+      addNotification({ message: 'Working offline — changes will sync when reconnected', type: 'warning', duration: Infinity });
+    }
+
+    // Hide splash after initial load
+    const timer = setTimeout(() => setIsInitializingApp(false), 2000);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearTimeout(timer);
+    };
+  }, [addNotification]);
 
   // ── Project Presence (WebRTC Awareness) ──────────────────────────────────
   const [onlineCollaborators, setOnlineCollaborators] = useState<{ id: string; name: string; color: string; photoURL?: string }[]>([]);
@@ -195,6 +225,7 @@ export function App() {
         status: 'editing',
         photoURL: userPhoto,
         color: color,
+        platform: Capacitor.getPlatform() === 'web' ? (window.electronAPI ? 'desktop' : 'web') : 'mobile',
         lastSeen: Date.now()
       });
     }, 10000);
@@ -205,6 +236,7 @@ export function App() {
       status: 'editing',
       photoURL: userPhoto,
       color: color,
+      platform: Capacitor.getPlatform() === 'web' ? (window.electronAPI ? 'desktop' : 'web') : 'mobile',
       lastSeen: Date.now()
     });
 
@@ -223,11 +255,19 @@ export function App() {
         id: u.uid,
         name: u.name || 'Collaborator',
         color: u.color || '#7c6bf0',
-        photoURL: u.photoURL
+        photoURL: u.photoURL,
+        platform: u.platform || 'unknown'
       }));
 
-      startTransition(() => {
-        setOnlineCollaborators(active);
+      // Check for new joiners to show notification
+      setOnlineCollaborators(prev => {
+        const prevIds = new Set(prev.map(p => p.id));
+        active.forEach(u => {
+          if (!prevIds.has(u.id) && u.id !== user.uid) {
+            addNotification({ message: `${u.name} joined the document`, type: 'info' });
+          }
+        });
+        return active;
       });
     });
 
@@ -740,39 +780,34 @@ export function App() {
 
     const handleActivityCompleted = (e: any) => {
       const { title, points, isLate } = e.detail;
-      const toast = document.createElement('div');
-      toast.style.position = 'fixed';
-      toast.style.bottom = '24px';
-      toast.style.left = '50%';
-      toast.style.transform = 'translateX(-50%)';
-      toast.style.background = isLate ? '#ef4444' : '#6dd49e';
-      toast.style.color = isLate ? '#fff' : '#000';
-      toast.style.padding = '12px 24px';
-      toast.style.borderRadius = '8px';
-      toast.style.fontWeight = 'bold';
-      toast.style.zIndex = '9999';
-      toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
-      toast.style.animation = 'slide-up 0.3s ease-out';
+      addNotification({
+        title: isLate ? 'Late Submission' : 'Success',
+        message: isLate 
+          ? `⚠️ Submitted late — points deducted ("${title}" +${points} pts)` 
+          : `🎉 Activity Completed: "${title}" (+${points} pts)`,
+        type: isLate ? 'warning' : 'success'
+      });
+    };
 
-      if (isLate) {
-        toast.innerHTML = `⚠️ Submitted late — points deducted ("${title}" +${points} pts)`;
-      } else {
-        toast.innerHTML = `🎉 Activity Completed: "${title}" (+${points} pts)`;
-      }
+    const handleFirebaseError = (e: any) => {
+      const { title, message, type } = e.detail;
+      addNotification({ title, message, type: type || 'error' });
+    };
 
-      document.body.appendChild(toast);
-      setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.5s';
-        setTimeout(() => toast.remove(), 500);
-      }, 4000);
+    const handleAIError = (e: any) => {
+      const { title, message, type } = e.detail;
+      addNotification({ title, message, type: type || 'warning' });
     };
 
     window.addEventListener('keydown', handleKeyDown)
     window.addEventListener('activity-completed', handleActivityCompleted)
+    window.addEventListener('firebase-error', handleFirebaseError)
+    window.addEventListener('ai-error', handleAIError)
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
       window.removeEventListener('activity-completed', handleActivityCompleted)
+      window.removeEventListener('firebase-error', handleFirebaseError)
+      window.removeEventListener('ai-error', handleAIError)
     }
   }, [editor, findOpen, isDistractionFree, showQuickSwitcher, isGraphFullscreen])
 
@@ -1044,6 +1079,46 @@ export function App() {
 
   return (
     <div className={`app-layout ${viewingStudentId ? 'app-layout--viewing-student' : ''}`}>
+      <AnimatePresence>
+        {isInitializingApp && (
+          <motion.div
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="splash-screen"
+            style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: '#0d0d1a', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', zIndex: 20000
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              style={{ textAlign: 'center' }}
+            >
+              <div style={{
+                width: '64px', height: '64px', background: 'var(--accent-primary)',
+                borderRadius: '16px', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', marginBottom: '24px', margin: '0 auto'
+              }}>
+                <FileText size={32} color="#fff" />
+              </div>
+              <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>Coollab</h1>
+              <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Preparing your collaborative workspace...</p>
+              <div className="skeleton" style={{ width: '120px', height: '4px', marginTop: '24px', borderRadius: '2px' }} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {!isOnline && (
+        <div className="offline-banner">
+          <WifiOff size={14} />
+          <span>Working offline — changes will sync when reconnected</span>
+        </div>
+      )}
+
       {isInitializingWorkspace && (
         <div className="initialization-overlay" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,

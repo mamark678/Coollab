@@ -13,6 +13,7 @@ import { SignupPage } from './pages/SignupPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ShareAcceptPage } from './pages/ShareAcceptPage'
 import { GuestAppPage } from './pages/GuestAppPage'
+import { NotificationProvider } from './context/NotificationContext'
 
 // Hack to fix Electron bug on Windows where native dialogs (confirm) steal keyboard focus
 const originalConfirm = window.confirm;
@@ -40,24 +41,26 @@ if (!rootEl) {
 ReactDOM.createRoot(rootEl).render(
   <React.StrictMode>
     <AuthProvider>
-      <HashRouter>
-        <AnimatePresence mode="wait">
-          <Routes>
-            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-            <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
-            <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
-            
-            {/* Share link acceptance — requires auth or guest */}
-            <Route path="/share/:token" element={<ShareAcceptPage />} />
-
-            {/* Guest view for unauthenticated access */}
-            <Route path="/guest/:projectId" element={<GuestAppPage />} />
-
-            {/* Main Application - Protected Route */}
-            <Route path="/" element={<ProtectedRoute><App /></ProtectedRoute>} />
-          </Routes>
-        </AnimatePresence>
-      </HashRouter>
+      <NotificationProvider>
+        <HashRouter>
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+              <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+              <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
+              
+              {/* Share link acceptance — requires auth or guest */}
+              <Route path="/share/:token" element={<ShareAcceptPage />} />
+  
+              {/* Guest view for unauthenticated access */}
+              <Route path="/guest/:projectId" element={<GuestAppPage />} />
+  
+              {/* Main Application - Protected Route */}
+              <Route path="/" element={<ProtectedRoute><App /></ProtectedRoute>} />
+            </Routes>
+          </AnimatePresence>
+        </HashRouter>
+      </NotificationProvider>
     </AuthProvider>
   </React.StrictMode>
 )

@@ -121,25 +121,33 @@ export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syn
           </button>
         )}
 
-        {/* Sync status badge - Outline Style */}
+        {/* Sync status badge - Premium Pill Style */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '6px',
-          padding: '0 12px',
-          height: 32,
-          borderRadius: '8px',
-          border: `1px solid ${config.color}`,
+          gap: '8px',
+          padding: '0 14px',
+          height: 30,
+          borderRadius: '15px',
+          background: `${config.color}15`, // 15% opacity
+          border: `1px solid ${config.color}30`, // 30% opacity
           color: config.color,
           fontSize: '12px',
-          fontWeight: 600,
-          background: 'transparent',
+          fontWeight: 700,
           flexShrink: 0,
-          transition: 'transform 0.4s ease, opacity 0.4s ease',
-          willChange: 'transform, opacity',
+          boxShadow: `0 0 10px ${config.color}10`,
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}>
-          <StatusIcon size={14} style={{ animation: syncIndicator === 'syncing' ? 'spin 2s linear infinite' : 'none' }} />
-          <span>{config.label}</span>
+          <StatusIcon 
+            size={14} 
+            style={{ 
+              animation: syncIndicator === 'syncing' ? 'spin 2s linear infinite' : 'none',
+              filter: `drop-shadow(0 0 2px ${config.color})`
+            }} 
+          />
+          <span style={{ letterSpacing: '0.02em', textTransform: 'uppercase', fontSize: '10px' }}>
+            {config.label}
+          </span>
         </div>
       </div>
     </div>

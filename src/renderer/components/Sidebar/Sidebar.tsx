@@ -852,12 +852,13 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
             )}
 
             {loadingDocs ? (
-              <div className="sidebar__loading" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', gap: '12px' }}>
-                <div className="sidebar__loading-spinner" style={{ width: '24px', height: '24px', border: '2px solid rgba(124, 107, 240, 0.1)', borderTopColor: '#7c6bf0', borderRadius: '50%', animation: 'spin 1.5s linear infinite' }} />
-                <span style={{ fontSize: '12px', color: '#a0a4b8' }}>Fetching workspace...</span>
-                <style>{`
-                @keyframes spin { to { transform: rotate(360deg); } }
-              `}</style>
+              <div className="sidebar__loading" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px' }}>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px' }}>
+                    <div className="skeleton-circle" style={{ width: '18px', height: '18px' }} />
+                    <div className="skeleton-text" style={{ width: Math.random() * 40 + 40 + '%', height: '12px', margin: 0 }} />
+                  </div>
+                ))}
               </div>
             ) : allDocs.length > 0 ? renderDocs : (
               <div className="sidebar__empty">No documents yet.</div>

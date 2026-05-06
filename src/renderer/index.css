@@ -706,6 +706,106 @@ body {
   word-break: break-all;
 }
 
+/* ── Skeletons ─────────────────────────────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-overlay) 25%,
+    var(--surface-raised) 50%,
+    var(--surface-overlay) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite linear;
+  border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+  height: 1em;
+  width: 100%;
+  margin-bottom: 0.5em;
+}
+
+.skeleton-circle {
+  border-radius: 50%;
+}
+
+/* ── Toasts ────────────────────────────────────────────────────────────── */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  color: var(--text-primary);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 300px;
+  max-width: 450px;
+}
+
+.toast--success { border-left: 4px solid var(--status-success); }
+.toast--error { border-left: 4px solid var(--status-error); }
+.toast--info { border-left: 4px solid var(--status-info); }
+.toast--warning { border-left: 4px solid var(--status-warning); }
+
+.toast__icon {
+  flex-shrink: 0;
+}
+
+.toast__content {
+  flex: 1;
+  font-size: 13px;
+}
+
+.toast__close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+}
+
+.toast__close:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+/* ── Offline Banner ────────────────────────────────────────────────────── */
+.offline-banner {
+  background: var(--status-warning);
+  color: #000;
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 110;
+}
+
 /* ── Collaboration cursors ──────────────────────────────────────────────── */
 .collaboration-cursor__caret {
   border-left: 1px solid;

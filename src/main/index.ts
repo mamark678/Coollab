@@ -142,7 +142,7 @@ if (!gotTheLock) {
                 code,
                 client_id: clientId!,
                 client_secret: clientSecret || '', // Include client_secret if available
-                redirect_uri: `http://127.0.0.1:${(server.address() as any).port}`,
+                redirect_uri: `http://127.0.0.1:${STATIC_PORT}`,
                 grant_type: 'authorization_code',
                 code_verifier: codeVerifier
               })
@@ -178,7 +178,9 @@ if (!gotTheLock) {
       }
     });
 
-    server.listen(0, '127.0.0.1', () => {
+    // Use a static port to ensure the redirect URI remains consistent
+    const STATIC_PORT = 51730;
+    server.listen(STATIC_PORT, '127.0.0.1', () => {
       const address = server.address();
       const port = (address && typeof address !== 'string') ? address.port : 0;
       if (port === 0) return;

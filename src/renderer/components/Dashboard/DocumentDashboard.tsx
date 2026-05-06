@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState, startTransition } from 'react';
-import { Plus, FolderPlus, Folder, Link2, Settings, LogOut, FileText, LayoutGrid, Zap } from 'lucide-react';
+import { Plus, FolderPlus, Folder, Link2, Settings, LogOut, FileText, LayoutGrid, Zap, Search, HelpCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { PaperCard } from './PaperCard';
 import { useAppStore } from '../../store/useAppStore';
@@ -10,6 +11,7 @@ import { SettingsModal } from '../Settings/SettingsModal';
 import { getUserAvatar } from '../../utils/avatar.utils';
 import { cleanPreviewText } from '../../utils/project.utils';
 import { YjsService } from '../../services/yjs';
+import { useNotifications } from '../../context/NotificationContext';
 import './DocumentDashboard.css';
 
 interface DocumentDashboardProps {
@@ -27,6 +29,7 @@ interface ProjectExtras {
 
 export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectProject }) => {
   const { state: { user } } = useAuth();
+  const { addNotification } = useNotifications();
 
   const [projects, setProjects] = useState<DocumentSchema[]>([]);
   const [activeThisWeek, setActiveThisWeek] = useState(0);
@@ -99,7 +102,7 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
           }));
 
           startTransition(() => {
-            setProjectExtras(prev => ({
+            setProjectExtras((prev: Record<string, ProjectExtras>) => ({
               ...prev,
               [project.id]: {
                 preview: previewDoc ? cleanPreviewText(previewDoc.searchText || previewDoc.content || '') : undefined,
@@ -111,7 +114,7 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
           });
         } catch (err) {
           console.error(`[Dashboard] Failed to load extras for project ${project.id}:`, err);
-          setProjectExtras(prev => ({
+          setProjectExtras((prev: Record<string, ProjectExtras>) => ({
             ...prev,
             [project.id]: { ...prev[project.id], loading: false }
           }));
@@ -162,8 +165,10 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
       setIsCreating(false);
       setNewProjectName('');
       onSelectProject(newProjectId, titleToUse);
+      addNotification({ title: 'Project Created', message: `"${titleToUse}" is ready.`, type: 'success' });
     } catch (err) {
       console.error('[Dashboard] Failed to create project:', err);
+      addNotification({ title: 'Creation Failed', message: 'Could not create project. Please try again.', type: 'error' });
     }
   }, [user, newProjectName, onSelectProject]);
 
@@ -214,8 +219,10 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
       setActivityDescription('');
       setActivityType('individual');
       onSelectProject(newProjectId, titleToUse);
+      addNotification({ title: 'Activity Project Created', message: `"${titleToUse}" is ready.`, type: 'success' });
     } catch (err) {
       console.error('[Dashboard] Failed to create activity project:', err);
+      addNotification({ title: 'Creation Failed', message: 'Could not create activity project.', type: 'error' });
     }
   }, [user, activityName, activityDescription, onSelectProject]);
 
@@ -234,7 +241,7 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
   }, [joinLink, navigate]);
 
   const handleDeleteProject = useCallback(async (projectId: string) => {
-    const project = projects.find(p => p.id === projectId);
+    const project = projects.find((p: DocumentSchema) => p.id === projectId);
     if (project && project.ownerId !== user?.uid) {
       alert('Only the project owner can delete this project');
       return;
@@ -243,16 +250,17 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
     if (!confirm('Are you sure you want to delete this project?')) return;
     try {
       await FirebaseService.getInstance().deleteNote(projectId);
-      setProjects((prev) => prev.filter((d) => d.id !== projectId));
+      setProjects((prev: DocumentSchema[]) => prev.filter((d: DocumentSchema) => d.id !== projectId));
       // Global fix for focus bug on Windows: force reload after delete
       window.location.reload();
     } catch (err) {
       console.error('[Dashboard] Failed to delete project:', err);
+      addNotification({ title: 'Delete Failed', message: 'Could not delete project.', type: 'error' });
     }
   }, [projects, user?.uid]);
 
   // Filtered projects
-  const filteredProjects = projects.filter((proj) => {
+  const filteredProjects = projects.filter((proj: DocumentSchema) => {
     if (activeTab === 'mine') return proj.ownerId === user?.uid;
     if (activeTab === 'recent') {
       const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -262,7 +270,7 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
   });
 
   const totalProjectsCount = projects.length;
-  const myProjectsCount = projects.filter((d) => d.ownerId === user?.uid).length;
+  const myProjectsCount = projects.filter((d: DocumentSchema) => d.ownerId === user?.uid).length;
   // recentProjectsCount is now activeThisWeek
 
   const getGreeting = (): string => {
@@ -439,52 +447,69 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
           {loading ? (
             // Skeleton state
             Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="paper-card paper-card--skeleton">
-                <div className="paper-card__accent-border" style={{ opacity: 0.1 }} />
+              <div key={i} className="paper-card skeleton" style={{ minHeight: '180px' }}>
                 <div className="paper-card__body">
-                  <div className="skeleton-line" style={{ width: '60%', height: '20px', marginBottom: '15px' }} />
-                  <div className="skeleton-line" style={{ width: '100%', marginBottom: '8px' }} />
-                  <div className="skeleton-line" style={{ width: '85%', marginBottom: '8px' }} />
-                  <div className="skeleton-line" style={{ width: '70%' }} />
+                  <div className="skeleton-text" style={{ width: '60%', height: '24px' }} />
+                  <div className="skeleton-text" style={{ width: '100%', height: '14px' }} />
+                  <div className="skeleton-text" style={{ width: '85%', height: '14px' }} />
                 </div>
-                <div className="paper-card__footer">
-                   <div className="paper-card__footer-left">
-                     <div className="paper-card__avatar" style={{ background: '#2a2a3e', opacity: 0.5 }} />
-                     <div className="paper-card__avatar" style={{ background: '#2a2a3e', opacity: 0.5, marginLeft: '-8px' }} />
-                   </div>
-                   <div className="paper-card__footer-right">
-                     <div className="skeleton-line" style={{ width: '40px', height: '14px' }} />
+                <div className="paper-card__footer" style={{ marginTop: 'auto' }}>
+                   <div style={{ display: 'flex', gap: '4px' }}>
+                     <div className="skeleton-circle" style={{ width: '24px', height: '24px' }} />
+                     <div className="skeleton-circle" style={{ width: '24px', height: '24px' }} />
                    </div>
                 </div>
               </div>
             ))
           ) : filteredProjects.length === 0 ? (
-            <div className="dashboard__empty">
-              <div className="dashboard__empty-icon">
-                <LayoutGrid size={48} />
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="dashboard__empty"
+            >
+              <div className="dashboard__empty-illustration">
+                <div className="empty-shape-1" />
+                <div className="empty-shape-2" />
+                <LayoutGrid size={64} className="dashboard__empty-icon" />
               </div>
               <h3 className="dashboard__empty-title">No projects yet</h3>
               <p className="dashboard__empty-desc">
-                Create your first project to get started
+                Your creative journey starts here. Create a project to begin collaborating in real-time.
               </p>
-              <button className="dashboard__action-btn dashboard__action-btn--primary" onClick={() => setIsCreating(true)} style={{ marginTop: '16px' }}>
-                <Plus size={16} />
-                New Project
-              </button>
-            </div>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+                <button className="dashboard__action-btn dashboard__action-btn--primary" onClick={() => setIsCreating(true)}>
+                  <Plus size={16} />
+                  New Project
+                </button>
+                <button className="dashboard__action-btn" onClick={() => setIsJoining(true)}>
+                  <Link2 size={16} />
+                  Join via Link
+                </button>
+              </div>
+            </motion.div>
           ) : (
-            filteredProjects.map((proj) => (
-              <PaperCard
-                key={proj.id}
-                doc={proj}
-                onClick={() => onSelectProject(proj.id, proj.title || 'Untitled Project')}
-                onDelete={proj.ownerId === user?.uid ? () => handleDeleteProject(proj.id) : undefined}
-                previewText={projectExtras[proj.id]?.preview}
-                previewLoading={projectExtras[proj.id]?.loading}
-                members={projectExtras[proj.id]?.members}
-                docCount={projectExtras[proj.id]?.docCount}
-              />
-            ))
+            <AnimatePresence mode="popLayout">
+              {filteredProjects.map((proj: DocumentSchema, index: number) => (
+                <motion.div
+                  key={proj.id}
+                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                  layout
+                >
+                  <PaperCard
+                    doc={proj}
+                    onClick={() => onSelectProject(proj.id, proj.title || 'Untitled Project')}
+                    onDelete={proj.ownerId === user?.uid ? () => handleDeleteProject(proj.id) : undefined}
+                    previewText={projectExtras[proj.id]?.preview}
+                    previewLoading={projectExtras[proj.id]?.loading}
+                    members={projectExtras[proj.id]?.members}
+                    docCount={projectExtras[proj.id]?.docCount}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
           )}
         </div>
       </div>

@@ -746,9 +746,15 @@ export const CollaborativeEditor: React.FC<CollaborativeEditorProps> = ({
 
   if (!provider) {
     return (
-      <div className="editor-loading">
-        <span className="loading-spinner" />
-        Connecting to collaboration room…
+      <div className="editor-loading" style={{ padding: '60px', maxWidth: '800px', margin: '0 auto' }}>
+        <div className="skeleton-text" style={{ width: '40%', height: '40px', marginBottom: '40px' }} />
+        <div className="skeleton-text" style={{ width: '100%', height: '18px' }} />
+        <div className="skeleton-text" style={{ width: '95%', height: '18px' }} />
+        <div className="skeleton-text" style={{ width: '98%', height: '18px' }} />
+        <div className="skeleton-text" style={{ width: '60%', height: '18px', marginBottom: '40px' }} />
+        <div className="skeleton-text" style={{ width: '100%', height: '18px' }} />
+        <div className="skeleton-text" style={{ width: '92%', height: '18px' }} />
+        <div className="skeleton-text" style={{ width: '80%', height: '18px' }} />
       </div>
     );
   }
