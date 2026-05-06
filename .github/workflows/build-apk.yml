@@ -48,26 +48,17 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Generate debug keystore
+      - name: Setup fixed debug keystore
         run: |
           mkdir -p /home/runner/.config/.android
-          keytool -genkeypair \
-            -keystore /home/runner/.config/.android/debug.keystore \
-            -alias AndroidDebugKey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 --decode > /home/runner/.config/.android/debug.keystore
 
-      - name: Get SHA-1 fingerprint
+      - name: Verify keystore SHA-1
         run: |
-          keytool -list \
+          keytool -list -v \
             -keystore /home/runner/.config/.android/debug.keystore \
             -alias AndroidDebugKey \
-            -storepass android \
-            -v
+            -storepass android
 
       - name: Build APK
         run: |
