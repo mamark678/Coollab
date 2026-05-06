@@ -48,6 +48,12 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Get SHA-1 fingerprint
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew signingReport
+
       - name: Build APK
         run: |
           cd android

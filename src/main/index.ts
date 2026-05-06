@@ -98,7 +98,18 @@ if (!gotTheLock) {
     }
   });
 
+  let activeAuthServer: any = null;
+
   ipcMain.on('auth:google-login', async () => {
+    // If a server is already running, close it first
+    if (activeAuthServer) {
+      try {
+        activeAuthServer.close();
+      } catch (e) {
+        console.error('[Main] Error closing existing auth server:', e);
+      }
+    }
+
     // Use import.meta.env to ensure variables are baked in at build time
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
@@ -169,10 +180,26 @@ if (!gotTheLock) {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end('<html><body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0a0a0f; color: white;"><h1>Authentication Successful!</h1><p>You can close this window and return to the app.</p></body></html>');
         server.close();
+        activeAuthServer = null;
       } else {
         res.writeHead(404);
         res.end();
       }
+    });
+
+    activeAuthServer = server;
+
+    // Handle server errors (like EADDRINUSE) to prevent app crash
+    server.on('error', (err: any) => {
+      console.error('[Main] Auth server error:', err);
+      if (err.code === 'EADDRINUSE') {
+        if (mainWindow) {
+          mainWindow.webContents.send('auth:google-result', { 
+            error: 'Authentication port (51730) is busy. Please try again in a few seconds or restart the app.' 
+          });
+        }
+      }
+      activeAuthServer = null;
     });
 
     // Use a static port to ensure the redirect URI remains consistent
@@ -195,6 +222,15 @@ if (!gotTheLock) {
 
       shell.openExternal(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
     });
+
+    // Set a timeout to close the server if no response is received within 5 minutes
+    setTimeout(() => {
+      if (activeAuthServer === server) {
+        console.log('[Main] Auth server timed out');
+        server.close();
+        activeAuthServer = null;
+      }
+    }, 5 * 60 * 1000);
   });
 
   ipcMain.handle('canvas:open-image-dialog', async () => {
