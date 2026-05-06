@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef, memo, useMemo } from 'react';
 import type { Editor } from '@tiptap/core';
 import { MessageSquare, Check, Send, Eye, EyeOff, AtSign, Trash2 } from 'lucide-react';
 import { FirebaseService } from '../../services/firebase';
@@ -15,7 +15,223 @@ interface CommentsPanelProps {
   userColor: string;
 }
 
-export const CommentsPanel: React.FC<CommentsPanelProps> = ({
+interface CommentReplyProps {
+  reply: any;
+  formatTime: (ts: number) => string;
+  renderTextWithMentions: (text: string) => React.ReactNode;
+}
+
+const CommentReply: React.FC<CommentReplyProps> = memo(({ reply, formatTime, renderTextWithMentions }) => (
+  <div className="comment-reply">
+    <div className="comment-reply__header">
+      {reply.authorPhoto ? (
+        <img src={reply.authorPhoto} alt={reply.authorName} className="comment-reply__avatar" />
+      ) : (
+        <div className="comment-reply__initials">{reply.authorName.substring(0, 2).toUpperCase()}</div>
+      )}
+      <span className="comment-reply__author">{reply.authorName}</span>
+      <span className="comment-reply__time">
+        {formatTime(reply.createdAt)}
+      </span>
+    </div>
+    <p className="comment-reply__text">{renderTextWithMentions(reply.content)}</p>
+  </div>
+));
+
+interface CommentCardProps {
+  comment: CommentItem;
+  user: any;
+  focusedCommentId: string | null;
+  confirmResolveId: string | null;
+  replyingTo: string | null;
+  replyText: string;
+  showMentions: boolean;
+  mentionIndex: number;
+  filteredMembers: any[];
+  formatTime: (ts: number) => string;
+  renderTextWithMentions: (text: string) => React.ReactNode;
+  onDelete: (id: string) => void;
+  onResolve: (id: string) => void;
+  onConfirmResolve: (comment: CommentItem) => void;
+  onCancelResolve: () => void;
+  onReplyClick: (id: string) => void;
+  onReplyTextChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onReplySubmit: (comment: CommentItem) => void;
+  onReplyCancel: () => void;
+  onScrollTo: (id: string) => void;
+  onInsertMention: (name: string) => void;
+  replyInputRef: React.RefObject<HTMLInputElement>;
+}
+
+const CommentCard: React.FC<CommentCardProps> = memo(({
+  comment, user, focusedCommentId, confirmResolveId, replyingTo, replyText,
+  showMentions, mentionIndex, filteredMembers, formatTime, renderTextWithMentions,
+  onDelete, onResolve, onConfirmResolve, onCancelResolve, onReplyClick,
+  onReplyTextChange, onReplySubmit, onReplyCancel, onScrollTo, onInsertMention,
+  replyInputRef
+}) => (
+  <div
+    id={`comment-${comment.id}`}
+    className={`comment-card ${comment.resolved ? 'comment-card--resolved' : ''} ${focusedCommentId === comment.id ? 'comment-card--focused' : ''}`}
+    onClick={() => {
+       if (comment.id && comment.type === 'inline') onScrollTo(comment.id)
+    }}
+    style={{ transform: 'translateZ(0)' }}
+  >
+    <div className="comment-card__header">
+      <div
+        className="comment-card__avatar"
+        style={{ backgroundColor: comment.authorAvatar || '#7c6bf0', overflow: 'hidden' }}
+      >
+        {comment.authorPhoto ? (
+          <img src={comment.authorPhoto} alt={comment.authorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          comment.authorName.substring(0, 2).toUpperCase()
+        )}
+      </div>
+      <div className="comment-card__meta">
+        <span className="comment-card__author">{comment.authorName}</span>
+        <span className="comment-card__time">{formatTime(comment.createdAt)}</span>
+      </div>
+      
+      <div className="comment-card__actions">
+        {user && comment.authorId === user.uid && (
+          <button
+            className="comment-card__action-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (comment.id) onDelete(comment.id);
+            }}
+            title="Delete"
+            type="button"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
+        {!comment.resolved && (
+          <button
+            className="comment-card__action-btn"
+            onClick={(e) => { e.stopPropagation(); onResolve(comment.id!); }}
+            title="Resolve"
+          >
+            <Check size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+
+    {confirmResolveId === comment.id && (
+      <div className="comment-resolve-confirm">
+        <p>Are you sure this comment has been resolved?</p>
+        <div className="comment-resolve-confirm__actions">
+          <button 
+            className="comment-resolve-confirm__yes"
+            onClick={(e) => { e.stopPropagation(); onConfirmResolve(comment); }}
+          >
+            Yes, Resolve
+          </button>
+          <button 
+            className="comment-resolve-confirm__no"
+            onClick={(e) => { e.stopPropagation(); onCancelResolve(); }}
+          >
+            No
+          </button>
+        </div>
+      </div>
+    )}
+
+    {comment.type === 'inline' && comment.anchorText && (
+      <div className="comment-card__anchor">
+        "{comment.anchorText}"
+      </div>
+    )}
+    
+    <p className="comment-card__text">{renderTextWithMentions(comment.content)}</p>
+    {comment.resolved && (
+      <span className="comment-card__resolved-badge">Resolved</span>
+    )}
+    {comment.orphaned && (
+      <span className="comment-card__orphaned-badge">Orphaned (Text Deleted)</span>
+    )}
+
+    {comment.replies && comment.replies.length > 0 && (
+      <div className="comment-card__replies">
+        {comment.replies.map((reply: any) => (
+          <CommentReply 
+            key={reply.id} 
+            reply={reply} 
+            formatTime={formatTime} 
+            renderTextWithMentions={renderTextWithMentions} 
+          />
+        ))}
+      </div>
+    )}
+
+    {!comment.resolved && (
+      <>
+        {replyingTo === comment.id ? (
+          <div className="comment-card__reply-form">
+            <div className="reply-input-wrapper">
+              <input
+                ref={replyInputRef}
+                type="text"
+                value={replyText}
+                onChange={onReplyTextChange}
+                placeholder="Reply… Use @ to mention"
+                className="comment-card__reply-input"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') onReplySubmit(comment);
+                  if (e.key === 'Escape') onReplyCancel();
+                }}
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+              {showMentions && replyingTo === comment.id && filteredMembers.length > 0 && (
+                <div className="mentions-dropdown reply-mentions">
+                  {filteredMembers.map((m: any, i: number) => (
+                    <div 
+                      key={m.uid} 
+                      className={`mention-item ${i === mentionIndex ? 'active' : ''}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onInsertMention(m.name);
+                      }}
+                    >
+                      {m.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button
+              className="comment-card__reply-send"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReplySubmit(comment);
+              }}
+              type="button"
+            >
+              <Send size={12} />
+            </button>
+          </div>
+        ) : (
+          <button
+            className="comment-card__reply-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReplyClick(comment.id || '');
+            }}
+            type="button"
+          >
+            Reply
+          </button>
+        )}
+      </>
+    )}
+  </div>
+));
+
+export const CommentsPanel: React.FC<CommentsPanelProps> = memo(({
   editor,
   username,
   userColor,
@@ -32,7 +248,6 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
   const [focusedCommentId, setFocusedCommentId] = useState<string | null>(null);
   const [confirmResolveId, setConfirmResolveId] = useState<string | null>(null);
   
-  // Refs for scrolling
   const [showMentions, setShowMentions] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
@@ -55,7 +270,6 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
       const { commentId } = e.detail;
       setFocusedCommentId(commentId);
       
-      // Scroll to the comment card
       setTimeout(() => {
         const element = document.getElementById(`comment-${commentId}`);
         if (element) {
@@ -63,7 +277,6 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
         }
       }, 100);
 
-      // Remove focus after some time
       setTimeout(() => {
         setFocusedCommentId(null);
       }, 3000);
@@ -78,9 +291,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
       
       const firebase = FirebaseService.getInstance();
       for (const comment of comments) {
-        // Only check inline comments that aren't already marked orphaned
         if (comment.type === 'inline' && !comment.orphaned && !activeIds.has(comment.id!)) {
-          console.log(`[CommentsPanel] Marking comment ${comment.id} as orphaned`);
           await firebase.updateComment(currentNoteId, comment.id!, { orphaned: true });
         }
       }
@@ -94,7 +305,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     };
   }, [currentNoteId, comments]);
 
-  const notifyMentionedUsers = async (text: string, commentId: string) => {
+  const notifyMentionedUsers = useCallback(async (text: string, commentId: string) => {
     if (!currentProjectId || !currentNoteId || !user) return;
     const firebase = FirebaseService.getInstance();
     const mentionRegex = /@(\w+)/g;
@@ -125,9 +336,9 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
         });
       }
     }
-  };
+  }, [currentProjectId, currentNoteId, user, username, userColor, projectMembers, profile]);
 
-  const notifyDocumentEditors = async (text: string, commentId: string) => {
+  const notifyDocumentEditors = useCallback(async (text: string, commentId: string) => {
     if (!currentProjectId || !currentNoteId || !user) return;
     const firebase = FirebaseService.getInstance();
     for (const member of projectMembers) {
@@ -150,9 +361,9 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
         });
       }
     }
-  };
+  }, [currentProjectId, currentNoteId, user, username, userColor, projectMembers, profile]);
 
-  const notifyReply = async (comment: CommentItem, replyText: string) => {
+  const notifyReply = useCallback(async (comment: CommentItem, replyText: string) => {
     if (!currentProjectId || !currentNoteId || !user) return;
     if (comment.authorId === user.uid) return;
     const firebase = FirebaseService.getInstance();
@@ -172,7 +383,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
       read: false,
       createdAt: Date.now()
     });
-  };
+  }, [currentProjectId, currentNoteId, user, username, userColor, profile]);
 
   const addComment = useCallback(async () => {
     if (!newCommentText.trim() || !currentNoteId || !user) return;
@@ -208,7 +419,6 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
       const firebase = FirebaseService.getInstance();
       await firebase.createComment(currentNoteId, comment);
 
-      // If inline, apply mark
       if (type === 'inline' && editor) {
         editor.chain().focus().setComment(commentId).run();
       }
@@ -220,13 +430,8 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
       setShowNewComment(false);
     } catch (err) {
       console.error('[CommentsPanel] Failed to add comment:', err);
-      alert('Failed to save comment. Please check your internet connection and permissions.');
     }
-  }, [editor, newCommentText, username, userColor, currentNoteId, user, projectMembers]);
-
-  const resolveComment = useCallback((commentId: string) => {
-    setConfirmResolveId(commentId);
-  }, []);
+  }, [editor, newCommentText, username, userColor, currentNoteId, user, profile, notifyMentionedUsers, notifyDocumentEditors]);
 
   const confirmResolve = useCallback(async (comment: CommentItem) => {
     if (!currentNoteId || !comment.id) return;
@@ -235,12 +440,8 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     const firebase = FirebaseService.getInstance();
     await firebase.updateComment(currentNoteId, comment.id, { resolved: true });
     
-    // Update Editor Mark
     if (editor) {
-      // 1. Set to resolved status for CSS transition
       editor.commands.updateCommentStatus(comment.id, 'resolved');
-      
-      // 2. Wait for transition, then remove mark
       setTimeout(() => {
         editor.commands.removeCommentMark(comment.id!);
       }, 500);
@@ -264,7 +465,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
         createdAt: Date.now()
       });
     }
-  }, [currentNoteId, currentProjectId, user, username, userColor]);
+  }, [currentNoteId, currentProjectId, user, username, userColor, editor, profile]);
 
   const deleteComment = useCallback(async (commentId: string) => {
     if (!currentNoteId) return;
@@ -287,10 +488,9 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     const firebase = FirebaseService.getInstance();
     await firebase.updateComment(currentNoteId, comment.id, {
       replies: [...comment.replies, reply],
-      resolved: false // Re-open on reply
+      resolved: false
     });
 
-    // Update Editor Mark if it was resolved
     if (editor) {
       editor.commands.updateCommentStatus(comment.id, 'unread');
     }
@@ -300,14 +500,14 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
 
     setReplyText('');
     setReplyingTo(null);
-  }, [replyText, username, user, currentNoteId, projectMembers]);
+  }, [replyText, username, user, currentNoteId, editor, profile, notifyMentionedUsers, notifyReply]);
 
   const scrollToComment = useCallback(
     (commentId: string) => {
       if (!editor) return;
       const doc = editor.state.doc;
       let pos = -1;
-      doc.descendants((node, nodePos) => {
+      doc.descendants((node: any, nodePos: number) => {
         if (pos >= 0) return false;
         const marks = node.marks;
         for (const mark of marks) {
@@ -324,7 +524,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     [editor]
   );
 
-  const formatTime = (ts: number): string => {
+  const formatTime = useCallback((ts: number): string => {
     const rtf = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
     const diffInSeconds = (ts - Date.now()) / 1000;
     
@@ -332,9 +532,9 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     if (Math.abs(diffInSeconds) < 3600) return rtf.format(Math.floor(diffInSeconds / 60), 'minute');
     if (Math.abs(diffInSeconds) < 86400) return rtf.format(Math.floor(diffInSeconds / 3600), 'hour');
     return new Date(ts).toLocaleDateString();
-  };
+  }, []);
 
-  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>, isReply: boolean) => {
+  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>, isReply: boolean) => {
     const text = e.target.value;
     if (isReply) setReplyText(text);
     else setNewCommentText(text);
@@ -350,9 +550,9 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     } else {
       setShowMentions(false);
     }
-  };
+  }, []);
 
-  const insertMention = (memberName: string, isReply: boolean) => {
+  const insertMention = useCallback((memberName: string, isReply: boolean) => {
     const text = isReply ? replyText : newCommentText;
     if (cursorPos === null) return;
 
@@ -370,17 +570,16 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
     
     setShowMentions(false);
     
-    // Refocus
     setTimeout(() => {
       if (isReply) replyInputRef.current?.focus();
       else textareaRef.current?.focus();
     }, 10);
-  };
+  }, [replyText, newCommentText, cursorPos]);
 
-  const visibleComments = showResolved ? comments : comments.filter(c => !c.resolved);
-  const filteredMembers = projectMembers.filter(m => m.name.toLowerCase().includes(mentionFilter.toLowerCase()));
+  const visibleComments = useMemo(() => showResolved ? comments : comments.filter(c => !c.resolved), [showResolved, comments]);
+  const filteredMembers = useMemo(() => projectMembers.filter(m => m.name.toLowerCase().includes(mentionFilter.toLowerCase())), [projectMembers, mentionFilter]);
 
-  const renderTextWithMentions = (text: string) => {
+  const renderTextWithMentions = useCallback((text: string) => {
     const parts = text.split(/(@\w+)/g);
     return parts.map((part, i) => {
       if (part.startsWith('@')) {
@@ -388,7 +587,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
       }
       return part;
     });
-  };
+  }, []);
 
   return (
     <div className="comments-panel">
@@ -428,7 +627,7 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
               />
               {showMentions && filteredMembers.length > 0 && (
                 <div className="mentions-dropdown">
-                  {filteredMembers.map((m, i) => (
+                  {filteredMembers.map((m: any, i: number) => (
                     <div 
                       key={m.uid} 
                       className={`mention-item ${i === mentionIndex ? 'active' : ''}`}
@@ -471,183 +670,38 @@ export const CommentsPanel: React.FC<CommentsPanelProps> = ({
             No comments yet.
           </p>
         )}
-        {visibleComments.map((comment) => (
-          <div
+        {visibleComments.map((comment: CommentItem) => (
+          <CommentCard
             key={comment.id}
-            id={`comment-${comment.id}`}
-            className={`comment-card ${comment.resolved ? 'comment-card--resolved' : ''} ${focusedCommentId === comment.id ? 'comment-card--focused' : ''}`}
-            onClick={() => {
-               if (comment.id && comment.type === 'inline') scrollToComment(comment.id)
+            comment={comment}
+            user={user}
+            focusedCommentId={focusedCommentId}
+            confirmResolveId={confirmResolveId}
+            replyingTo={replyingTo}
+            replyText={replyText}
+            showMentions={showMentions}
+            mentionIndex={mentionIndex}
+            filteredMembers={filteredMembers}
+            formatTime={formatTime}
+            renderTextWithMentions={renderTextWithMentions}
+            onDelete={deleteComment}
+            onResolve={(id) => setConfirmResolveId(id)}
+            onConfirmResolve={confirmResolve}
+            onCancelResolve={() => setConfirmResolveId(null)}
+            onReplyClick={(id) => setReplyingTo(id)}
+            onReplyTextChange={(e) => handleTextChange(e, true)}
+            onReplySubmit={addReply}
+            onReplyCancel={() => {
+              setReplyingTo(null);
+              setReplyText('');
+              setShowMentions(false);
             }}
-          >
-            <div className="comment-card__header">
-              <div
-                className="comment-card__avatar"
-                style={{ backgroundColor: comment.authorAvatar || '#7c6bf0', overflow: 'hidden' }}
-              >
-                {comment.authorPhoto ? (
-                  <img src={comment.authorPhoto} alt={comment.authorName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  comment.authorName.substring(0, 2).toUpperCase()
-                )}
-              </div>
-              <div className="comment-card__meta">
-                <span className="comment-card__author">{comment.authorName}</span>
-                <span className="comment-card__time">{formatTime(comment.createdAt)}</span>
-              </div>
-              
-              <div className="comment-card__actions">
-                {user && comment.authorId === user.uid && (
-                  <button
-                    className="comment-card__action-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (comment.id) deleteComment(comment.id);
-                    }}
-                    title="Delete"
-                    type="button"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                )}
-                {!comment.resolved && (
-                  <button
-                    className="comment-card__action-btn"
-                    onClick={(e) => { e.stopPropagation(); setConfirmResolveId(comment.id!); }}
-                    title="Resolve"
-                  >
-                    <Check size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Confirmation Popover */}
-            {confirmResolveId === comment.id && (
-              <div className="comment-resolve-confirm">
-                <p>Are you sure this comment has been resolved?</p>
-                <div className="comment-resolve-confirm__actions">
-                  <button 
-                    className="comment-resolve-confirm__yes"
-                    onClick={(e) => { e.stopPropagation(); confirmResolve(comment); }}
-                  >
-                    Yes, Resolve
-                  </button>
-                  <button 
-                    className="comment-resolve-confirm__no"
-                    onClick={(e) => { e.stopPropagation(); setConfirmResolveId(null); }}
-                  >
-                    No
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {comment.type === 'inline' && comment.anchorText && (
-              <div className="comment-card__anchor">
-                "{comment.anchorText}"
-              </div>
-            )}
-            
-            <p className="comment-card__text">{renderTextWithMentions(comment.content)}</p>
-            {comment.resolved && (
-              <span className="comment-card__resolved-badge">Resolved</span>
-            )}
-            {comment.orphaned && (
-              <span className="comment-card__orphaned-badge">Orphaned (Text Deleted)</span>
-            )}
-
-            {/* Replies */}
-            {comment.replies && comment.replies.length > 0 && (
-              <div className="comment-card__replies">
-                {comment.replies.map((reply) => (
-                  <div key={reply.id} className="comment-reply">
-                    <div className="comment-reply__header">
-                      {reply.authorPhoto ? (
-                        <img src={reply.authorPhoto} alt={reply.authorName} className="comment-reply__avatar" />
-                      ) : (
-                        <div className="comment-reply__initials">{reply.authorName.substring(0, 2).toUpperCase()}</div>
-                      )}
-                      <span className="comment-reply__author">{reply.authorName}</span>
-                      <span className="comment-reply__time">
-                        {formatTime(reply.createdAt)}
-                      </span>
-                    </div>
-                    <p className="comment-reply__text">{renderTextWithMentions(reply.content)}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Reply input */}
-            {!comment.resolved && (
-              <>
-                {replyingTo === comment.id ? (
-                  <div className="comment-card__reply-form">
-                    <div className="reply-input-wrapper">
-                      <input
-                        ref={replyInputRef}
-                        type="text"
-                        value={replyText}
-                        onChange={(e) => handleTextChange(e, true)}
-                        placeholder="Reply… Use @ to mention"
-                        className="comment-card__reply-input"
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') addReply(comment);
-                          if (e.key === 'Escape') {
-                            setReplyingTo(null);
-                            setReplyText('');
-                            setShowMentions(false);
-                          }
-                        }}
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                      {showMentions && replyingTo === comment.id && filteredMembers.length > 0 && (
-                        <div className="mentions-dropdown reply-mentions">
-                          {filteredMembers.map((m, i) => (
-                            <div 
-                              key={m.uid} 
-                              className={`mention-item ${i === mentionIndex ? 'active' : ''}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                insertMention(m.name, true);
-                              }}
-                            >
-                              {m.name}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      className="comment-card__reply-send"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        addReply(comment);
-                      }}
-                      type="button"
-                    >
-                      <Send size={12} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    className="comment-card__reply-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setReplyingTo(comment.id || null);
-                    }}
-                    type="button"
-                  >
-                    Reply
-                  </button>
-                )}
-              </>
-            )}
-          </div>
+            onScrollTo={scrollToComment}
+            onInsertMention={(name) => insertMention(name, true)}
+            replyInputRef={replyInputRef}
+          />
         ))}
       </div>
     </div>
   );
-};
+});

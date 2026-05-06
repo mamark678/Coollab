@@ -24,8 +24,7 @@ export const SignupPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showWeakPasswordModal, setShowWeakPasswordModal] = useState(false);
-  // Debug panel — shows raw error info on screen without needing DevTools
-  const [debugLog, setDebugLog] = useState<string[]>([]);
+
   const passwordInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
@@ -147,30 +146,13 @@ export const SignupPage: React.FC = () => {
 
     if (isMobile) {
       try {
-        console.error('COOLLAB_AUTH: Starting Google Sign-In');
-        const clientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
-        
-        // Log Client ID format checks
-        setDebugLog(prev => [...prev, `ClientID ends with: ...${clientId?.slice(-30)}`]);
-        setDebugLog(prev => [...prev, `ClientID valid format: ${clientId?.endsWith('.apps.googleusercontent.com')}`]);
-        
-        // Check if plugin is available
-        console.log('[GOOGLE] Plugin available:', typeof GoogleSignIn);
-        setDebugLog(prev => [...prev, `Plugin type: ${typeof GoogleSignIn}`]);
-
-        // Log full initialize result
-        const initResult = await GoogleSignIn.initialize({
+        await GoogleSignIn.initialize({
           clientId: import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
         });
-        console.log('[GOOGLE] Init result:', JSON.stringify(initResult));
-        setDebugLog(prev => [...prev, `Init result: ${JSON.stringify(initResult)}`]);
 
-        setDebugLog(prev => [...prev, 'Calling signIn now...']);
         const result = await GoogleSignIn.signIn({
           nonce: Math.random().toString(36).substring(2)
         });
-        console.log('[GOOGLE] SignIn result:', JSON.stringify(result));
-        setDebugLog(prev => [...prev, `signIn raw result: ${JSON.stringify(result)}`]);
 
         if (!result.idToken) {
           throw new Error('No idToken returned from Google Sign-In');
@@ -182,15 +164,6 @@ export const SignupPage: React.FC = () => {
         await FirebaseService.getInstance().handleGoogleSignInResult(userCredential.user);
         navigate('/');
       } catch (err: any) {
-        console.error('COOLLAB_AUTH: ' + JSON.stringify(err));
-        console.error('[GOOGLE] Full error:', JSON.stringify(err));
-        console.error('[GOOGLE] Error code:', err.code);
-        console.error('[GOOGLE] Error message:', err.message);
-        console.error('[GOOGLE] Error stack:', err.stack);
-        setDebugLog(prev => [...prev, `ERROR code: ${err.code}`]);
-        setDebugLog(prev => [...prev, `ERROR msg: ${err.message}`]);
-        setDebugLog(prev => [...prev, `ERROR stack: ${err.stack}`]);
-        setDebugLog(prev => [...prev, `FULL: ${JSON.stringify(err)}`]);
         setError(`${err.code || 'Error'} — ${err.message}`);
         setLoading(false);
       }
@@ -198,7 +171,6 @@ export const SignupPage: React.FC = () => {
       // Electron desktop flow - keep unchanged
       const electronAPI = (window as any).electronAPI;
       if (electronAPI) {
-        console.log('[AUTH] Using Electron IPC auth flow');
         electronAPI.send('auth:google-login');
       } else {
         console.log('[AUTH] Starting signInWithRedirect (web browser)...');
@@ -232,26 +204,7 @@ export const SignupPage: React.FC = () => {
 
           <GoogleSignInButton label="Sign up with Google" onClick={handleGoogleSignup} disabled={loading} />
 
-          {/* ── Debug panel: visible on phone without DevTools ── */}
-          {debugLog.length > 0 && (
-            <div style={{
-              marginTop: 12,
-              padding: '10px 14px',
-              background: 'rgba(0,0,0,0.7)',
-              border: '1px solid #ef4444',
-              borderRadius: 8,
-              fontSize: 11,
-              fontFamily: 'monospace',
-              color: '#f87171',
-              lineHeight: 1.6,
-              wordBreak: 'break-all',
-            }}>
-              <div style={{ fontWeight: 700, marginBottom: 4, color: '#fca5a5' }}>🔍 Auth Debug Log</div>
-              {debugLog.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
-            </div>
-          )}
+
 
           <div className="flex items-center gap-3 my-[22px]">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/[0.06]"></div>

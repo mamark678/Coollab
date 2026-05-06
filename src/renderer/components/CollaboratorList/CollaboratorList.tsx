@@ -24,71 +24,84 @@ export const CollaboratorList: React.FC<CollaboratorListProps> = memo(({
   const onlineMembers = members.filter(m => m.isOnline);
   const offlineMembers = members.filter(m => !m.isOnline);
 
-  const renderMember = (c: any) => (
-    <div 
-      key={c.id} 
-      onContextMenu={(e) => {
-        if (!isOwner || c.id === currentUserId || c.role === 'Guest') return;
-        e.preventDefault();
-        setContextMenu({ x: e.clientX, y: e.clientY, userId: c.id, name: c.name });
-      }}
-      style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '12px',
-        padding: '6px 0',
-        cursor: (isOwner && c.id !== currentUserId && c.role !== 'Guest') ? 'context-menu' : 'default',
-        opacity: c.isOnline ? 1 : 0.6
-      }}
-    >
-      <div style={{ position: 'relative' }}>
-        <div style={{
-          width: 32,
-          height: 32,
-          borderRadius: '50%',
-          backgroundColor: c.color || '#4b5563',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'white',
-          fontWeight: 'bold',
-          fontSize: '12px',
-          overflow: 'hidden'
-        }}>
-          {getUserAvatar(c) ? (
-            <img src={getUserAvatar(c)!} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            c.name.substring(0, 2).toUpperCase()
-          )}
-        </div>
-        <div style={{
-          position: 'absolute',
-          bottom: 0,
-          right: 0,
-          width: 10,
-          height: 10,
-          borderRadius: '50%',
-          backgroundColor: c.isOnline ? '#22c55e' : '#ef4444',
-          border: '2px solid var(--surface-mantle)',
-        }} />
+interface CollaboratorItemProps {
+  member: any;
+  isOwner: boolean;
+  currentUserId: string | null;
+  onContextMenu: (e: React.MouseEvent, userId: string, name: string) => void;
+}
+
+const CollaboratorItem: React.FC<CollaboratorItemProps> = memo(({
+  member: c, isOwner, currentUserId, onContextMenu
+}) => (
+  <div 
+    onContextMenu={(e) => onContextMenu(e, c.id, c.name)}
+    style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '12px',
+      padding: '6px 0',
+      cursor: (isOwner && c.id !== currentUserId && c.role !== 'Guest') ? 'context-menu' : 'default',
+      opacity: c.isOnline ? 1 : 0.6,
+      transition: 'opacity 0.2s ease',
+      transform: 'translateZ(0)'
+    }}
+  >
+    <div style={{ position: 'relative' }}>
+      <div style={{
+        width: 32,
+        height: 32,
+        borderRadius: '50%',
+        backgroundColor: c.color || '#4b5563',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: 'white',
+        fontWeight: 'bold',
+        fontSize: '12px',
+        overflow: 'hidden'
+      }}>
+        {getUserAvatar(c) ? (
+          <img src={getUserAvatar(c)!} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          c.name.substring(0, 2).toUpperCase()
+        )}
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{
-          fontSize: '13px',
-          color: 'var(--text-primary)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          fontWeight: 600,
-        }}>
-          {c.name} {c.id === currentUserId && '(You)'}
-        </div>
-        <div style={{ fontSize: '11px', color: 'var(--text-faint)' }}>
-          {c.role}
-        </div>
+      <div style={{
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 10,
+        height: 10,
+        borderRadius: '50%',
+        backgroundColor: c.isOnline ? '#22c55e' : '#ef4444',
+        border: '2px solid var(--surface-mantle)',
+      }} />
+    </div>
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{
+        fontSize: '13px',
+        color: 'var(--text-primary)',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        fontWeight: 600,
+      }}>
+        {c.name} {c.id === currentUserId && '(You)'}
+      </div>
+      <div style={{ fontSize: '11px', color: 'var(--text-faint)' }}>
+        {c.role}
       </div>
     </div>
-  );
+  </div>
+));
+
+  const handleMemberContextMenu = (e: React.MouseEvent, userId: string, name: string) => {
+    const member = members.find(m => m.id === userId);
+    if (!isOwner || userId === currentUserId || member?.role === 'Guest') return;
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, userId, name });
+  };
 
   const isNative = Capacitor.isNativePlatform();
 
@@ -129,7 +142,15 @@ export const CollaboratorList: React.FC<CollaboratorListProps> = memo(({
             Online ({onlineMembers.length})
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '24px' }}>
-            {onlineMembers.map(renderMember)}
+            {onlineMembers.map(m => (
+              <CollaboratorItem 
+                key={m.id} 
+                member={m} 
+                isOwner={isOwner ?? false} 
+                currentUserId={currentUserId ?? null} 
+                onContextMenu={handleMemberContextMenu} 
+              />
+            ))}
           </div>
         </>
       )}
@@ -151,7 +172,15 @@ export const CollaboratorList: React.FC<CollaboratorListProps> = memo(({
             Offline ({offlineMembers.length})
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {offlineMembers.map(renderMember)}
+            {offlineMembers.map(m => (
+              <CollaboratorItem 
+                key={m.id} 
+                member={m} 
+                isOwner={isOwner ?? false} 
+                currentUserId={currentUserId ?? null} 
+                onContextMenu={handleMemberContextMenu} 
+              />
+            ))}
           </div>
         </>
       )}

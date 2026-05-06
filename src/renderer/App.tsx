@@ -615,7 +615,7 @@ export function App() {
       )
 
       // Activity triggers are now event-driven from the UI
-    }, 2500)
+    }, 500)
   }, [currentNoteId, currentProjectId, user, activityType, viewingStudentId])
 
   const onContentUpdateRef = useRef(handleContentUpdate);

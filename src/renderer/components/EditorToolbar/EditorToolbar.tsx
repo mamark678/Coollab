@@ -503,28 +503,28 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
 
       {/* Group 5 — Alignment */}
       <div className="toolbar-group">
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-align-left"
           icon={<AlignLeft size={16} />}
           label="Align Left"
           isActive={editor.isActive({ textAlign: 'left' })}
           onClick={() => editor.chain().focus().setTextAlign('left').run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-align-center"
           icon={<AlignCenter size={16} />}
           label="Align Center"
           isActive={editor.isActive({ textAlign: 'center' })}
           onClick={() => editor.chain().focus().setTextAlign('center').run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-align-right"
           icon={<AlignRight size={16} />}
           label="Align Right"
           isActive={editor.isActive({ textAlign: 'right' })}
           onClick={() => editor.chain().focus().setTextAlign('right').run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-align-justify"
           icon={<AlignJustify size={16} />}
           label="Justify"
@@ -537,7 +537,7 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
 
       {/* Group 6 — Lists */}
       <div className="toolbar-group">
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-bullet-list"
           icon={<List size={16} />}
           label="Bullet List"
@@ -545,7 +545,7 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
           isActive={editor.isActive('bulletList')}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-ordered-list"
           icon={<ListOrdered size={16} />}
           label="Numbered List"
@@ -553,14 +553,14 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
           isActive={editor.isActive('orderedList')}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-task-list"
           icon={<ListChecks size={16} />}
           label="Task List"
           isActive={editor.isActive('taskList')}
           onClick={() => editor.chain().focus().toggleTaskList().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-indent"
           icon={<Indent size={16} />}
           label="Indent"
@@ -568,7 +568,7 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
           onClick={() => editor.chain().focus().sinkListItem('listItem').run()}
           isDisabled={!editor.can().sinkListItem('listItem')}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-outdent"
           icon={<Outdent size={16} />}
           label="Outdent"
@@ -582,7 +582,7 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
 
       {/* Group 7 — Insert */}
       <div className="toolbar-group">
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-insert-table"
           icon={<Table size={16} />}
           label="Insert Table"
@@ -594,7 +594,7 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
               .run()
           }
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-insert-image"
           icon={<Image size={16} />}
           label="Insert Image"
@@ -619,27 +619,27 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
             input.click()
           }}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-insert-hr"
           icon={<Minus size={16} />}
           label="Horizontal Rule"
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-insert-blockquote"
           icon={<Quote size={16} />}
           label="Blockquote"
           isActive={editor.isActive('blockquote')}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-insert-code-block"
           icon={<Code2 size={16} />}
           label="Code Block"
           isActive={editor.isActive('codeBlock')}
           onClick={() => editor.chain().focus().toggleCodeBlock().run()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-insert-link"
           icon={<Link size={16} />}
           label="Insert Link"
@@ -662,28 +662,28 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
 
       {/* Group 8 — View */}
       <div className="toolbar-group">
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-spellcheck"
           icon={<SpellCheck size={16} />}
           label="Toggle Spell Check"
           isActive={spellCheck}
           onClick={toggleSpellCheck}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-word-count"
           icon={<Hash size={16} />}
           label="Word Count Panel"
           isActive={showWordCount}
           onClick={() => onToggleWordCount?.()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-outline"
           icon={<FileText size={16} />}
           label="Document Outline"
           isActive={showOutline}
           onClick={() => onToggleOutline?.()}
         />
-        <ToolbarButton
+        <MemoToolbarButton
           id="toolbar-distraction-free"
           icon={<Maximize size={16} />}
           label="Distraction-Free Mode"

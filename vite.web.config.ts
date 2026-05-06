@@ -9,6 +9,16 @@ export default defineConfig({
     build: {
         outDir: '../../dist-web',
         emptyOutDir: true,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+                    'tiptap': ['@tiptap/react', '@tiptap/starter-kit'],
+                    'yjs': ['yjs', 'y-webrtc', 'y-indexeddb'],
+                    'vendor': ['react', 'react-dom', 'react-router-dom'],
+                }
+            }
+        }
     },
     resolve: {
         alias: {

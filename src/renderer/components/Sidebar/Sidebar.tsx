@@ -598,6 +598,110 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
     }
   }, [dropIndicator, allDocs, isDescendant, resetDragState, activityType, isAdmin, currentProjectId, user?.uid]);
 
+interface SidebarItemProps {
+  doc: DocumentSchema;
+  depth: number;
+  isExpanded: boolean;
+  dropPos: DropPosition | null;
+  isActive: boolean;
+  editingDocId: string | null;
+  editingDocTitle: string;
+  onOpen: (doc: DocumentSchema) => void;
+  onContextMenu: (e: React.MouseEvent, doc: DocumentSchema) => void;
+  onRename: (doc: DocumentSchema) => void;
+  onCommitRename: () => void;
+  onCancelRename: () => void;
+  onTitleChange: (val: string) => void;
+  onDragStart: (e: React.DragEvent, doc: DocumentSchema) => void;
+  onDragEnd: (e: React.DragEvent) => void;
+  onDragEnter: (e: React.DragEvent, id: string) => void;
+  onDragLeave: (e: React.DragEvent, id: string) => void;
+  onDragOver: (e: React.DragEvent, target: DocumentSchema) => void;
+  onDrop: (e: React.DragEvent, target: DocumentSchema) => void;
+  children?: React.ReactNode;
+}
+
+const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
+  doc, depth, isExpanded, dropPos, isActive, editingDocId, editingDocTitle,
+  onOpen, onContextMenu, onRename, onCommitRename, onCancelRename, onTitleChange,
+  onDragStart, onDragEnd, onDragEnter, onDragLeave, onDragOver, onDrop, children
+}) => {
+  const dropClass = dropPos
+    ? dropPos === 'inside'
+      ? 'sidebar__doc-item--drop-inside'
+      : dropPos === 'before'
+        ? 'sidebar__doc-item--drop-before'
+        : 'sidebar__doc-item--drop-after'
+    : '';
+
+  return (
+    <React.Fragment>
+      <div
+        role="button"
+        tabIndex={0}
+        draggable
+        data-doc-id={doc.id}
+        onDragStart={e => onDragStart(e, doc)}
+        onDragEnd={onDragEnd}
+        onDragEnter={e => onDragEnter(e, doc.id)}
+        onDragLeave={e => onDragLeave(e, doc.id)}
+        onDragOver={e => onDragOver(e, doc)}
+        onDrop={e => onDrop(e, doc)}
+        className={`sidebar__doc-item ${isActive ? 'sidebar__doc-item--active' : ''} ${dropClass}`}
+        onClick={() => onOpen(doc)}
+        onContextMenu={e => onContextMenu(e, doc)}
+        title={doc.title || (doc.isFolder ? 'New Folder' : 'Untitled Document')}
+        style={{ paddingLeft: `${8 + depth * 16}px` }}
+      >
+        {doc.isFolder
+          ? isExpanded
+            ? <ChevronDown size={14} className="sidebar-folder-chevron" />
+            : <ChevronRight size={14} className="sidebar-folder-chevron" />
+          : null}
+
+        {!doc.isFolder && (
+          <>
+            {doc.type === 'canvas' ? (
+              <LayoutGrid size={16} className="sidebar__doc-icon" style={{ color: '#7c3aed' }} />
+            ) : doc.type === 'base' ? (
+              <Database size={16} className="sidebar__doc-icon" style={{ color: '#0ea5e9' }} />
+            ) : (
+              <FileText size={16} className="sidebar__doc-icon" />
+            )}
+          </>
+        )}
+        {doc.isFolder && isExpanded && <FolderOpen size={16} className="sidebar__doc-icon" />}
+        {doc.isFolder && !isExpanded && <Folder size={16} className="sidebar__doc-icon" />}
+
+        {editingDocId === doc.id ? (
+          <input
+            type="text"
+            value={editingDocTitle}
+            autoFocus
+            onChange={e => { e.stopPropagation(); onTitleChange(e.target.value); }}
+            onKeyDown={e => {
+              e.stopPropagation();
+              if (e.key === 'Enter') onCommitRename();
+              if (e.key === 'Escape') onCancelRename();
+            }}
+            onKeyUp={e => e.stopPropagation()}
+            onBlur={onCommitRename}
+            className="sidebar__rename-input"
+          />
+        ) : (
+          <span className="sidebar__doc-name">{doc.title}</span>
+        )}
+      </div>
+
+      {doc.isFolder && isExpanded && (
+        <div className="sidebar__folder-children">
+          {children}
+        </div>
+      )}
+    </React.Fragment>
+  );
+});
+
   // ── Tree rendering ────────────────────────────────────────────────────────
   const renderDocs = useMemo(() => {
     // Deduplicate by ID to prevent flicker/duplication
@@ -629,88 +733,37 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
       const children = childrenByParent[doc.id] || [];
       const dropPos = dropIndicator?.id === doc.id ? dropIndicator.position : null;
 
-      const dropClass = dropPos
-        ? dropPos === 'inside'
-          ? 'sidebar__doc-item--drop-inside'
-          : dropPos === 'before'
-            ? 'sidebar__doc-item--drop-before'
-            : 'sidebar__doc-item--drop-after'
-        : '';
-
       return (
-        <React.Fragment key={doc.id}>
-          <div
-            role="button"
-            tabIndex={0}
-            draggable
-            data-doc-id={doc.id}
-            onDragStart={e => handleDragStart(e, doc)}
-            onDragEnd={handleDragEnd}
-            onDragEnter={e => handleDragEnter(e, doc.id)}
-            onDragLeave={e => handleDragLeave(e, doc.id)}
-            onDragOver={e => handleDragOver(e, doc)}
-            onDrop={e => handleDrop(e, doc)}
-            className={`sidebar__doc-item ${currentNoteId === doc.id ? 'sidebar__doc-item--active' : ''} ${dropClass}`}
-            onClick={() => handleOpenDoc(doc)}
-            onContextMenu={e => handleContextMenu(e, doc)}
-            title={doc.title || (doc.isFolder ? 'New Folder' : 'Untitled Document')}
-            style={{ paddingLeft: `${8 + depth * 16}px` }}
-          >
-            {doc.isFolder
-              ? isExpanded
-                ? <ChevronDown size={14} className="sidebar-folder-chevron" />
-                : <ChevronRight size={14} className="sidebar-folder-chevron" />
-              : null}
-
-            {!doc.isFolder && (
-              <>
-                {doc.type === 'canvas' ? (
-                  <LayoutGrid size={16} className="sidebar__doc-icon" style={{ color: '#7c3aed' }} />
-                ) : doc.type === 'base' ? (
-                  <Database size={16} className="sidebar__doc-icon" style={{ color: '#0ea5e9' }} />
-                ) : (
-                  <FileText size={16} className="sidebar__doc-icon" />
-                )}
-              </>
-            )}
-            {doc.isFolder && isExpanded && <FolderOpen size={16} className="sidebar__doc-icon" />}
-            {doc.isFolder && !isExpanded && <Folder size={16} className="sidebar__doc-icon" />}
-
-            {editingDocId === doc.id ? (
-              <input
-                type="text"
-                value={editingDocTitle}
-                ref={(el) => {
-                  if (el) {
-                    setTimeout(() => el.focus(), 50); // Bug 2.5: Focus fix
-                  }
-                }}
-                onChange={e => { e.stopPropagation(); setEditingDocTitle(e.target.value); }}
-                onKeyDown={e => {
-                  e.stopPropagation();
-                  if (e.key === 'Enter') commitRename();
-                  if (e.key === 'Escape') setEditingDocId(null);
-                }}
-                onKeyUp={e => e.stopPropagation()}
-                onBlur={commitRename}
-                className="sidebar__rename-input"
-              />
-            ) : (
-              <span className="sidebar__doc-name">{doc.title}</span>
-            )}
-          </div>
-
-          {doc.isFolder && isExpanded && (
-            <div className="sidebar__folder-children">
-              {children.map(child => renderNode(child, depth + 1))}
-            </div>
-          )}
-        </React.Fragment>
+        <SidebarItem
+          key={doc.id}
+          doc={doc}
+          depth={depth}
+          isExpanded={isExpanded}
+          dropPos={dropPos}
+          isActive={currentNoteId === doc.id}
+          editingDocId={editingDocId}
+          editingDocTitle={editingDocTitle}
+          onOpen={handleOpenDoc}
+          onContextMenu={handleContextMenu}
+          onRename={startRenaming}
+          onCommitRename={commitRename}
+          onCancelRename={() => setEditingDocId(null)}
+          onTitleChange={setEditingDocTitle}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {children.map(child => renderNode(child, depth + 1))}
+        </SidebarItem>
       );
     };
 
     return <>{rootDocs.map(f => renderNode(f, 0))}</>;
-  }, [allDocs, expandedFolders, currentNoteId, sortOrder, handleOpenDoc, editingDocId, editingDocTitle, commitRename, dropIndicator, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDragOver, handleDrop]);
+  }, [allDocs, expandedFolders, currentNoteId, sortOrder, handleOpenDoc, editingDocId, editingDocTitle, commitRename, dropIndicator, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDragOver, handleDrop, startRenaming]);
+
 
   return (
     <>

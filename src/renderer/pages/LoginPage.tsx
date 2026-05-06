@@ -30,8 +30,7 @@ export const LoginPage: React.FC = () => {
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetCooldown, setResetCooldown] = useState(0);
-  // Debug panel — shows raw error info on screen without needing DevTools
-  const [debugLog, setDebugLog] = useState<string[]>([]);
+
 
   // Rate Limiting (Section 3)
   const [failedAttempts, setFailedAttempts] = useState(0);
@@ -171,30 +170,13 @@ export const LoginPage: React.FC = () => {
 
     if (isMobile) {
       try {
-        console.error('COOLLAB_AUTH: Starting Google Sign-In');
-        const clientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
-        
-        // Log Client ID format checks
-        setDebugLog(prev => [...prev, `ClientID ends with: ...${clientId?.slice(-30)}`]);
-        setDebugLog(prev => [...prev, `ClientID valid format: ${clientId?.endsWith('.apps.googleusercontent.com')}`]);
-        
-        // Check if plugin is available
-        console.log('[GOOGLE] Plugin available:', typeof GoogleSignIn);
-        setDebugLog(prev => [...prev, `Plugin type: ${typeof GoogleSignIn}`]);
-
-        // Log full initialize result
-        const initResult = await GoogleSignIn.initialize({
+        await GoogleSignIn.initialize({
           clientId: import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
         });
-        console.log('[GOOGLE] Init result:', JSON.stringify(initResult));
-        setDebugLog(prev => [...prev, `Init result: ${JSON.stringify(initResult)}`]);
 
-        setDebugLog(prev => [...prev, 'Calling signIn now...']);
         const result = await GoogleSignIn.signIn({
           nonce: Math.random().toString(36).substring(2)
         });
-        console.log('[GOOGLE] SignIn result:', JSON.stringify(result));
-        setDebugLog(prev => [...prev, `signIn raw result: ${JSON.stringify(result)}`]);
 
         if (!result.idToken) {
           throw new Error('No idToken returned from Google Sign-In');
@@ -207,15 +189,6 @@ export const LoginPage: React.FC = () => {
         setFailedAttempts(0);
         navigate('/');
       } catch (err: any) {
-        console.error('COOLLAB_AUTH: ' + JSON.stringify(err));
-        console.error('[GOOGLE] Full error:', JSON.stringify(err));
-        console.error('[GOOGLE] Error code:', err.code);
-        console.error('[GOOGLE] Error message:', err.message);
-        console.error('[GOOGLE] Error stack:', err.stack);
-        setDebugLog(prev => [...prev, `ERROR code: ${err.code}`]);
-        setDebugLog(prev => [...prev, `ERROR msg: ${err.message}`]);
-        setDebugLog(prev => [...prev, `ERROR stack: ${err.stack}`]);
-        setDebugLog(prev => [...prev, `FULL: ${JSON.stringify(err)}`]);
         setError(`${err.code || 'Error'} — ${err.message}`);
         setLoading(false);
       }
@@ -279,26 +252,7 @@ export const LoginPage: React.FC = () => {
             disabled={loading || lockoutTime > 0}
           />
 
-          {/* ── Debug panel: visible on phone without DevTools ── */}
-          {debugLog.length > 0 && (
-            <div style={{
-              marginTop: 12,
-              padding: '10px 14px',
-              background: 'rgba(0,0,0,0.7)',
-              border: '1px solid #ef4444',
-              borderRadius: 8,
-              fontSize: 11,
-              fontFamily: 'monospace',
-              color: '#f87171',
-              lineHeight: 1.6,
-              wordBreak: 'break-all',
-            }}>
-              <div style={{ fontWeight: 700, marginBottom: 4, color: '#fca5a5' }}>🔍 Auth Debug Log</div>
-              {debugLog.map((line, i) => (
-                <div key={i}>{line}</div>
-              ))}
-            </div>
-          )}
+
 
           <div className="flex items-center gap-3 my-[22px]">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/[0.06]"></div>

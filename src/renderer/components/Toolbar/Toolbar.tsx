@@ -15,6 +15,39 @@ const statusConfig = {
   offline: { color: '#e66b7a', label: 'Offline', shadow: 'rgba(230, 107, 122, 0.5)' }
 };
 
+interface CollaboratorAvatarProps {
+  collaborator: { id: string; name: string; color?: string; photoURL?: string };
+}
+
+const CollaboratorAvatar: React.FC<CollaboratorAvatarProps> = memo(({ collaborator: c }) => (
+  <div
+    title={c.name}
+    style={{
+      width: 28,
+      height: 28,
+      borderRadius: '50%',
+      backgroundColor: c.color || '#7c6bf0',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      color: 'white',
+      fontSize: '11px',
+      fontWeight: 700,
+      border: '2px solid var(--surface-mantle)',
+      marginLeft: '-8px',
+      cursor: 'default',
+      overflow: 'hidden',
+      transform: 'translateZ(0)'
+    }}
+  >
+    {c.photoURL ? (
+      <img src={c.photoURL} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+    ) : (
+      c.name.charAt(0).toUpperCase()
+    )}
+  </div>
+));
+
 export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syncIndicator, onShareClick, collaborators = [], onCollaboratorsClick }) => {
   const { setCurrentNoteId } = useAppStore();
   const config = statusConfig[syncIndicator];
@@ -53,32 +86,7 @@ export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syn
             </span>
           )}
           {collaborators.map((c) => (
-            <div
-              key={c.id}
-              title={c.name}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                backgroundColor: c.color || '#7c6bf0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: '11px',
-                fontWeight: 700,
-                border: '2px solid var(--surface-mantle)',
-                marginLeft: '-8px',
-                cursor: 'default',
-                overflow: 'hidden'
-              }}
-            >
-              {c.photoURL ? (
-                <img src={c.photoURL} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : (
-                c.name.charAt(0).toUpperCase()
-              )}
-            </div>
+            <CollaboratorAvatar key={c.id} collaborator={c} />
           ))}
         </div>
 
@@ -99,18 +107,19 @@ export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syn
               fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
-              transition: 'transform 0.2s, opacity 0.2s, box-shadow 0.2s',
-              willChange: 'transform, opacity',
+              transition: 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s ease, box-shadow 0.15s ease',
+              willChange: 'transform, box-shadow',
               flexShrink: 0,
               boxShadow: '0 2px 8px rgba(124, 107, 240, 0.3)',
+              transform: 'translateZ(0)'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.boxShadow = '0 4px 16px rgba(124, 107, 240, 0.45)';
-              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.transform = 'translateY(-1px) translateZ(0)';
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.boxShadow = '0 2px 8px rgba(124, 107, 240, 0.3)';
-              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.transform = 'translateY(0) translateZ(0)';
             }}
             title="Share project"
             type="button"
@@ -136,7 +145,8 @@ export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syn
           fontWeight: 700,
           flexShrink: 0,
           boxShadow: `0 0 10px ${config.color}10`,
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, border-color 0.3s ease',
+          transform: 'translateZ(0)'
         }}>
           <StatusIcon 
             size={14} 

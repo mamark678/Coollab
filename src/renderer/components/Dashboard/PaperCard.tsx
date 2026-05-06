@@ -21,7 +21,7 @@ interface PaperCardProps {
   docCount?: number;
 }
 
-export const PaperCard: React.FC<PaperCardProps> = ({ 
+export const PaperCard = React.memo(({ 
   doc, 
   onClick, 
   onDelete, 
@@ -29,7 +29,7 @@ export const PaperCard: React.FC<PaperCardProps> = ({
   previewLoading = false,
   members = [],
   docCount = 0
-}) => {
+}: PaperCardProps) => {
   const accentColor = getProjectColor(doc.id);
   const titleColor = getDimmerProjectColor(doc.id);
 
@@ -134,4 +134,4 @@ export const PaperCard: React.FC<PaperCardProps> = ({
       </div>
     </div>
   );
-};
+});
