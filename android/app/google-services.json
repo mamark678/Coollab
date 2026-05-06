@@ -23,6 +23,14 @@
           }
         },
         {
+          "client_id": "251672582118-jked73boo65aq63p6ovaj3qd3qtbfgh7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.coollab.app",
+            "certificate_hash": "65f117f064a1fce0b93bf528075f99530f86c063"
+          }
+        },
+        {
           "client_id": "251672582118-n3sip0i77t89hlld431o93o1rgvs0fgs.apps.googleusercontent.com",
           "client_type": 3
         }
