@@ -1,9 +1,9 @@
 import { Capacitor } from '@capacitor/core';
 import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
-import { createUserWithEmailAndPassword, signInWithCredential, GoogleAuthProvider, signInWithRedirect, getRedirectResult, updateProfile, sendEmailVerification } from 'firebase/auth';
-import { motion, AnimatePresence } from 'framer-motion';
+import { GoogleAuthProvider, createUserWithEmailAndPassword, getRedirectResult, sendEmailVerification, signInWithCredential, signInWithRedirect, updateProfile } from 'firebase/auth';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, Check, Lock, Mail, User, X } from 'lucide-react';
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AntiGravityLogo } from '../components/auth/AntiGravityLogo';
 import { AuthButton } from '../components/auth/AuthButton';
@@ -49,13 +49,13 @@ export const SignupPage: React.FC = () => {
       const auth = FirebaseService.getInstance().auth;
       const cleanEmail = email.trim();
       const cleanFullName = fullName.trim();
-      
+
       const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
       await updateProfile(credential.user, { displayName: cleanFullName });
-      
+
       // Section 4: Email Verification
       await sendEmailVerification(credential.user);
-      
+
       await auth.currentUser?.reload();
       navigate('/');
     } catch (err: any) {
@@ -109,12 +109,12 @@ export const SignupPage: React.FC = () => {
         setLoading(false);
         return;
       }
-      
+
       if (idToken || accessToken) {
         try {
           const credential = GoogleAuthProvider.credential(idToken, accessToken);
           const auth = FirebaseService.getInstance().auth;
-          
+
           try {
             const result = await signInWithCredential(auth, credential);
             await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
@@ -147,27 +147,40 @@ export const SignupPage: React.FC = () => {
 
     if (isMobile) {
       try {
-        // Initialize the plugin
+        const clientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
+        setDebugLog(prev => [...prev, `ClientID: ${clientId?.substring(0, 20)}...`]);
+
         await GoogleSignIn.initialize({
           clientId: import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
         });
-        
-        // Trigger native Google Sign-In dialog
+        console.log('[GOOGLE] Initialize success');
+        setDebugLog(prev => [...prev, 'Initialize: OK']);
+
         const result = await GoogleSignIn.signIn({
           nonce: Math.random().toString(36).substring(2)
         });
-        
+        console.log('[GOOGLE] SignIn result:', JSON.stringify(result));
+        setDebugLog(prev => [...prev, `SignIn result: ${JSON.stringify(result)}`]);
+
         if (!result.idToken) {
           throw new Error('No idToken returned from Google Sign-In');
         }
-        
+
         // Exchange with Firebase
         const credential = GoogleAuthProvider.credential(result.idToken);
         const userCredential = await signInWithCredential(auth, credential);
         await FirebaseService.getInstance().handleGoogleSignInResult(userCredential.user);
         navigate('/');
       } catch (err: any) {
-        setError(`Google Sign-In failed: ${err.message}`);
+        console.error('[GOOGLE] Full error:', JSON.stringify(err));
+        console.error('[GOOGLE] Error code:', err.code);
+        console.error('[GOOGLE] Error message:', err.message);
+        console.error('[GOOGLE] Error stack:', err.stack);
+        setDebugLog(prev => [...prev, `ERROR code: ${err.code}`]);
+        setDebugLog(prev => [...prev, `ERROR msg: ${err.message}`]);
+        setDebugLog(prev => [...prev, `ERROR stack: ${err.stack}`]);
+        setDebugLog(prev => [...prev, `FULL: ${JSON.stringify(err)}`]);
+        setError(`${err.code || 'Error'} — ${err.message}`);
         setLoading(false);
       }
     } else {
@@ -235,123 +248,123 @@ export const SignupPage: React.FC = () => {
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/[0.06]"></div>
           </div>
 
-        <ErrorBanner error={error} />
+          <ErrorBanner error={error} />
 
-        <form onSubmit={handleSignup} className="flex flex-col gap-4 mt-2">
-          <AuthInput
-            label="Full name"
-            icon={User}
-            type="text"
-            placeholder="Jane Smith"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-            disabled={loading}
-          />
-          <AuthInput
-            label="Email address"
-            icon={Mail}
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={loading}
-          />
-
-          <div className="flex flex-col w-full">
+          <form onSubmit={handleSignup} className="flex flex-col gap-4 mt-2">
             <AuthInput
-              ref={passwordInputRef}
-              label="Password"
-              icon={Lock}
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              label="Full name"
+              icon={User}
+              type="text"
+              placeholder="Jane Smith"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
               required
               disabled={loading}
             />
-            <PasswordStrengthMeter password={password} />
-            {isPasswordTooShort && (
-              <motion.p 
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-[#e66b7a] text-[11px] mt-1.5 font-medium flex items-center gap-1"
-              >
-                <X size={10} /> Password must be at least 6 characters
-              </motion.p>
-            )}
-          </div>
-
-          <div className="relative">
             <AuthInput
-              label="Confirm password"
-              icon={Lock}
-              type="password"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              label="Email address"
+              icon={Mail}
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               disabled={loading}
             />
-            {confirmPassword.length > 0 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute right-10 top-[34px] flex items-center justify-center z-10 pointer-events-none"
-              >
-                {passwordsMatch ? (
-                  <Check size={16} className="text-[#6dd49e]" />
-                ) : (
-                  <X size={16} className="text-[#e66b7a]" />
-                )}
-              </motion.div>
-            )}
-          </div>
 
-          <label className="flex items-start gap-2.5 mt-1 cursor-pointer group">
-            <input
-              type="checkbox"
-              className="mt-0.5 w-[15px] h-[15px] shrink-0 rounded border-white/[0.15] bg-white/[0.05] text-[#7c6bf0] focus:ring-[#7c6bf0] outline-none"
-              checked={termsAgreed}
-              onChange={(e) => setTermsAgreed(e.target.checked)}
-              disabled={loading}
-            />
-            <span className="text-[13px] text-[#a0a4b8] leading-tight group-hover:text-[#e8eaf0] transition-colors">
-              I agree to the{' '}
-              <button type="button" onClick={() => window.open('https://example.com/terms', '_blank')} className="text-[#7c6bf0] hover:underline font-semibold">Terms of Service</button>
-              {' '}and{' '}
-              <button type="button" onClick={() => window.open('https://example.com/privacy', '_blank')} className="text-[#7c6bf0] hover:underline font-semibold">Privacy Policy</button>
-            </span>
-          </label>
+            <div className="flex flex-col w-full">
+              <AuthInput
+                ref={passwordInputRef}
+                label="Password"
+                icon={Lock}
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+              <PasswordStrengthMeter password={password} />
+              {isPasswordTooShort && (
+                <motion.p
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-[#e66b7a] text-[11px] mt-1.5 font-medium flex items-center gap-1"
+                >
+                  <X size={10} /> Password must be at least 6 characters
+                </motion.p>
+              )}
+            </div>
 
-          <div className="mt-5 mb-4">
-            <AuthButton type="submit" loading={loading} disabled={!isFormValid}>
-              Create Account
-            </AuthButton>
-          </div>
-        </form>
+            <div className="relative">
+              <AuthInput
+                label="Confirm password"
+                icon={Lock}
+                type="password"
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                disabled={loading}
+              />
+              {confirmPassword.length > 0 && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute right-10 top-[34px] flex items-center justify-center z-10 pointer-events-none"
+                >
+                  {passwordsMatch ? (
+                    <Check size={16} className="text-[#6dd49e]" />
+                  ) : (
+                    <X size={16} className="text-[#e66b7a]" />
+                  )}
+                </motion.div>
+              )}
+            </div>
 
-        <p className="text-center text-[14px] text-[#a0a4b8]">
-          Already have an account?{' '}
-          <Link to="/login" className="text-[#7c6bf0] font-bold tracking-wide hover:text-[#9485f5] transition-colors">
-            Sign in
-          </Link>
-        </p>
+            <label className="flex items-start gap-2.5 mt-1 cursor-pointer group">
+              <input
+                type="checkbox"
+                className="mt-0.5 w-[15px] h-[15px] shrink-0 rounded border-white/[0.15] bg-white/[0.05] text-[#7c6bf0] focus:ring-[#7c6bf0] outline-none"
+                checked={termsAgreed}
+                onChange={(e) => setTermsAgreed(e.target.checked)}
+                disabled={loading}
+              />
+              <span className="text-[13px] text-[#a0a4b8] leading-tight group-hover:text-[#e8eaf0] transition-colors">
+                I agree to the{' '}
+                <button type="button" onClick={() => window.open('https://example.com/terms', '_blank')} className="text-[#7c6bf0] hover:underline font-semibold">Terms of Service</button>
+                {' '}and{' '}
+                <button type="button" onClick={() => window.open('https://example.com/privacy', '_blank')} className="text-[#7c6bf0] hover:underline font-semibold">Privacy Policy</button>
+              </span>
+            </label>
+
+            <div className="mt-5 mb-4">
+              <AuthButton type="submit" loading={loading} disabled={!isFormValid}>
+                Create Account
+              </AuthButton>
+            </div>
+          </form>
+
+          <p className="text-center text-[14px] text-[#a0a4b8]">
+            Already have an account?{' '}
+            <Link to="/login" className="text-[#7c6bf0] font-bold tracking-wide hover:text-[#9485f5] transition-colors">
+              Sign in
+            </Link>
+          </p>
         </GlassCard>
       </div>
 
       <AnimatePresence>
         {showWeakPasswordModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-[6px]">
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
               className="bg-[#161720] border border-white/10 rounded-[24px] p-7 max-w-sm w-full shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500/50 via-yellow-400/50 to-yellow-500/50" />
-              
+
               <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center mb-5">
                 <AlertTriangle className="text-yellow-500" size={24} />
               </div>
@@ -360,15 +373,15 @@ export const SignupPage: React.FC = () => {
               <p className="text-[#a0a4b8] text-[14.5px] leading-relaxed mb-8">
                 Your password is weak. A weak password makes your account easier to hack. Are you sure you want to continue with this password?
               </p>
-              
+
               <div className="flex flex-col gap-3">
-                <button 
+                <button
                   onClick={executeSignup}
                   className="w-full py-3 bg-[#7c6bf0] text-white rounded-[12px] font-bold text-[15px] hover:bg-[#6b5ae0] transition-all active:scale-[0.98] shadow-lg shadow-[#7c6bf0]/20"
                 >
                   Yes, continue anyway
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     setShowWeakPasswordModal(false);
                     setTimeout(() => passwordInputRef.current?.focus(), 100);

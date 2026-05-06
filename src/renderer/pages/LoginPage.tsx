@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Link, useNavigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { GoogleSignIn } from '@capawesome/capacitor-google-sign-in';
-import { 
-  signInWithEmailAndPassword, 
-  signInWithCredential, 
-  GoogleAuthProvider, 
+import {
+  getRedirectResult,
+  GoogleAuthProvider,
   sendPasswordResetEmail,
-  fetchSignInMethodsForEmail,
-  EmailAuthProvider,
-  linkWithCredential,
-  signInWithRedirect,
-  getRedirectResult
+  signInWithCredential,
+  signInWithEmailAndPassword,
+  signInWithRedirect
 } from 'firebase/auth';
-import { Mail, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { GlassCard } from '../components/auth/GlassCard';
-import { AuthInput } from '../components/auth/AuthInput';
-import { AuthButton } from '../components/auth/AuthButton';
-import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
-import { ErrorBanner } from '../components/auth/ErrorBanner';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CheckCircle2, Lock, Mail } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { AntiGravityLogo } from '../components/auth/AntiGravityLogo';
+import { AuthButton } from '../components/auth/AuthButton';
+import { AuthInput } from '../components/auth/AuthInput';
+import { ErrorBanner } from '../components/auth/ErrorBanner';
+import { GlassCard } from '../components/auth/GlassCard';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 import { FirebaseService } from '../services/firebase';
 import { mapAuthError } from '../utils/auth.helpers';
 
@@ -103,12 +100,12 @@ export const LoginPage: React.FC = () => {
         setLoading(false);
         return;
       }
-      
+
       if (idToken || accessToken) {
         try {
           const credential = GoogleAuthProvider.credential(idToken, accessToken);
           const auth = FirebaseService.getInstance().auth;
-          
+
           try {
             const result = await signInWithCredential(auth, credential);
             await FirebaseService.getInstance().handleGoogleSignInResult(result.user);
@@ -174,20 +171,25 @@ export const LoginPage: React.FC = () => {
 
     if (isMobile) {
       try {
-        // Initialize the plugin
+        const clientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
+        setDebugLog(prev => [...prev, `ClientID: ${clientId?.substring(0, 20)}...`]);
+
         await GoogleSignIn.initialize({
           clientId: import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
         });
-        
-        // Trigger native Google Sign-In dialog
+        console.log('[GOOGLE] Initialize success');
+        setDebugLog(prev => [...prev, 'Initialize: OK']);
+
         const result = await GoogleSignIn.signIn({
           nonce: Math.random().toString(36).substring(2)
         });
-        
+        console.log('[GOOGLE] SignIn result:', JSON.stringify(result));
+        setDebugLog(prev => [...prev, `SignIn result: ${JSON.stringify(result)}`]);
+
         if (!result.idToken) {
           throw new Error('No idToken returned from Google Sign-In');
         }
-        
+
         // Exchange with Firebase
         const credential = GoogleAuthProvider.credential(result.idToken);
         const userCredential = await signInWithCredential(auth, credential);
@@ -195,7 +197,15 @@ export const LoginPage: React.FC = () => {
         setFailedAttempts(0);
         navigate('/');
       } catch (err: any) {
-        setError(`Google Sign-In failed: ${err.message}`);
+        console.error('[GOOGLE] Full error:', JSON.stringify(err));
+        console.error('[GOOGLE] Error code:', err.code);
+        console.error('[GOOGLE] Error message:', err.message);
+        console.error('[GOOGLE] Error stack:', err.stack);
+        setDebugLog(prev => [...prev, `ERROR code: ${err.code}`]);
+        setDebugLog(prev => [...prev, `ERROR msg: ${err.message}`]);
+        setDebugLog(prev => [...prev, `ERROR stack: ${err.stack}`]);
+        setDebugLog(prev => [...prev, `FULL: ${JSON.stringify(err)}`]);
+        setError(`${err.code || 'Error'} — ${err.message}`);
         setLoading(false);
       }
     } else {
@@ -245,17 +255,17 @@ export const LoginPage: React.FC = () => {
     >
       <div className="w-full max-w-md flex flex-col items-center">
         <AntiGravityLogo />
-        
+
         <GlassCard>
           <div className="text-center mb-[28px]">
             <h2 className="text-[26px] font-bold text-[#e8eaf0] tracking-tight mb-1">Welcome back</h2>
             <p className="text-[14.5px] text-[#6b6f82]">Sign in to continue to Coollab</p>
           </div>
 
-          <GoogleSignInButton 
-            label="Continue with Google" 
-            onClick={handleGoogleSignIn} 
-            disabled={loading || lockoutTime > 0} 
+          <GoogleSignInButton
+            label="Continue with Google"
+            onClick={handleGoogleSignIn}
+            disabled={loading || lockoutTime > 0}
           />
 
           {/* ── Debug panel: visible on phone without DevTools ── */}
@@ -285,61 +295,61 @@ export const LoginPage: React.FC = () => {
             <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/[0.06]"></div>
           </div>
 
-        <ErrorBanner error={error} />
+          <ErrorBanner error={error} />
 
-        <form onSubmit={handleEmailSignIn} className="flex flex-col gap-4 mt-2">
-          <AuthInput
-            label="Email address"
-            icon={Mail}
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={loading || lockoutTime > 0}
-          />
-          <AuthInput
-            label="Password"
-            icon={Lock}
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={loading || lockoutTime > 0}
-          />
+          <form onSubmit={handleEmailSignIn} className="flex flex-col gap-4 mt-2">
+            <AuthInput
+              label="Email address"
+              icon={Mail}
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading || lockoutTime > 0}
+            />
+            <AuthInput
+              label="Password"
+              icon={Lock}
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading || lockoutTime > 0}
+            />
 
-          <div className="flex items-center justify-between mt-1 mb-2">
-            <div className="text-[13.5px] text-[#a0a4b8]">
-              {lockoutTime > 0 && (
-                <span className="text-[#e66b7a] font-medium animate-pulse">
-                  Try again in {lockoutTime}s
-                </span>
-              )}
+            <div className="flex items-center justify-between mt-1 mb-2">
+              <div className="text-[13.5px] text-[#a0a4b8]">
+                {lockoutTime > 0 && (
+                  <span className="text-[#e66b7a] font-medium animate-pulse">
+                    Try again in {lockoutTime}s
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(true)}
+                className="text-[13.5px] text-[#7c6bf0] font-semibold hover:text-[#9485f5] transition-colors"
+              >
+                Forgot password?
+              </button>
             </div>
 
-            <button 
-              type="button"
-              onClick={() => setShowForgotModal(true)}
-              className="text-[13.5px] text-[#7c6bf0] font-semibold hover:text-[#9485f5] transition-colors"
-            >
-              Forgot password?
-            </button>
-          </div>
+            <div className="mt-6 mb-4">
+              <AuthButton type="submit" loading={loading} disabled={!isFormValid}>
+                {lockoutTime > 0 ? `Locked (${lockoutTime}s)` : 'Sign In'}
+              </AuthButton>
+            </div>
+          </form>
 
-          <div className="mt-6 mb-4">
-            <AuthButton type="submit" loading={loading} disabled={!isFormValid}>
-              {lockoutTime > 0 ? `Locked (${lockoutTime}s)` : 'Sign In'}
-            </AuthButton>
-          </div>
-        </form>
-
-        <p className="text-center text-[14px] text-[#a0a4b8]">
-          Don't have an account?{' '}
-          <Link to="/signup" className="text-[#7c6bf0] font-bold tracking-wide hover:text-[#9485f5] transition-colors">
-            Create one
-          </Link>
-        </p>
+          <p className="text-center text-[14px] text-[#a0a4b8]">
+            Don't have an account?{' '}
+            <Link to="/signup" className="text-[#7c6bf0] font-bold tracking-wide hover:text-[#9485f5] transition-colors">
+              Create one
+            </Link>
+          </p>
         </GlassCard>
       </div>
 
@@ -389,9 +399,9 @@ export const LoginPage: React.FC = () => {
                       required
                     />
                     <div className="mt-8">
-                      <AuthButton 
-                        type="submit" 
-                        loading={resetLoading} 
+                      <AuthButton
+                        type="submit"
+                        loading={resetLoading}
                         disabled={!email || resetCooldown > 0}
                       >
                         {resetCooldown > 0 ? `Resend in ${resetCooldown}s` : 'Send reset link'}
