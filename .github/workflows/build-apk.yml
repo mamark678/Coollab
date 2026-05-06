@@ -66,7 +66,8 @@ jobs:
           keytool -list \
             -keystore /home/runner/.config/.android/debug.keystore \
             -alias AndroidDebugKey \
-            -storepass android
+            -storepass android \
+            -v
 
       - name: Build APK
         run: |
