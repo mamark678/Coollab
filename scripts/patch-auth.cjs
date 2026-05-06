@@ -7,7 +7,7 @@ const NEW_MOBILE_BLOCK_LOGIN = `    if (isMobile) {
       console.log('[AUTH] Starting native GoogleSignIn...');
       setDebugLog(prev => [...prev, 'Calling native GoogleSignIn.signIn()...']);
       try {
-        await GoogleSignIn.initialize({ clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '' });
+        await GoogleSignIn.initialize({ clientId: import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID || '' });
         setDebugLog(prev => [...prev, 'Plugin initialized']);
 
         const response = await GoogleSignIn.signIn();
@@ -41,7 +41,7 @@ const NEW_MOBILE_BLOCK_SIGNUP = `    if (isMobile) {
       console.log('[AUTH] Starting native GoogleSignIn...');
       setDebugLog(prev => [...prev, 'Calling native GoogleSignIn.signIn()...']);
       try {
-        await GoogleSignIn.initialize({ clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID || '' });
+        await GoogleSignIn.initialize({ clientId: import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID || '' });
         setDebugLog(prev => [...prev, 'Plugin initialized']);
 
         const response = await GoogleSignIn.signIn();

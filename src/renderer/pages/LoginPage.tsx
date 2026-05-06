@@ -176,7 +176,7 @@ export const LoginPage: React.FC = () => {
       try {
         // Initialize the plugin
         await GoogleSignIn.initialize({
-          clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID
+          clientId: import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID
         });
         
         // Trigger native Google Sign-In dialog

@@ -100,11 +100,9 @@ if (!gotTheLock) {
 
   ipcMain.on('auth:google-login', async () => {
     // Use import.meta.env to ensure variables are baked in at build time
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const clientSecret = import.meta.env.VITE_GOOGLE_CLIENT_SECRET;
+    const clientId = import.meta.env.VITE_GOOGLE_WEB_CLIENT_ID;
 
     console.log('[Main] Client ID:', clientId ? `${clientId.substring(0, 15)}...` : 'undefined');
-    console.log('[Main] Client Secret exists:', !!clientSecret);
 
     if (!clientId || clientId.includes('YOUR_GOOGLE_CLIENT_ID')) {
       const error = 'Google Client ID not configured. Please check your .env file.';
@@ -141,7 +139,6 @@ if (!gotTheLock) {
               body: new URLSearchParams({
                 code,
                 client_id: clientId!,
-                client_secret: clientSecret || '', // Include client_secret if available
                 redirect_uri: `http://127.0.0.1:${STATIC_PORT}`,
                 grant_type: 'authorization_code',
                 code_verifier: codeVerifier
