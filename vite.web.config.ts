@@ -15,7 +15,9 @@ export default defineConfig({
                     'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
                     'tiptap': ['@tiptap/react', '@tiptap/starter-kit'],
                     'yjs': ['yjs', 'y-webrtc', 'y-indexeddb'],
-                    'vendor': ['react', 'react-dom', 'react-router-dom'],
+                    'framer-motion': ['framer-motion'],
+                    'icons': ['lucide-react'],
+                    'vendor': ['react', 'react-dom', 'react-router-dom', 'zustand'],
                 }
             }
         }

@@ -11,6 +11,7 @@ export interface AppState {
   projectMembers: { uid: string; name: string; photoBase64?: string | null; role: 'Owner' | 'Can Edit' | 'Guest' }[];
   activityType: 'individual' | 'group' | null;
   viewingStudentId: string | null;
+  onlineCollaborators: { id: string; name: string; color: string; photoURL?: string; platform?: string }[];
   setCurrentProjectId: (id: string | null) => void;
   setCurrentNoteId: (id: string | null) => void;
   setSidebarSelectionId: (id: string | null) => void;
@@ -20,6 +21,7 @@ export interface AppState {
   setProjectMembers: (members: AppState['projectMembers']) => void;
   setActivityType: (type: 'individual' | 'group' | null) => void;
   setViewingStudentId: (id: string | null) => void;
+  setOnlineCollaborators: (users: AppState['onlineCollaborators']) => void;
   currentDocType: 'document' | 'canvas' | 'base' | null;
   setCurrentDocType: (type: 'document' | 'canvas' | 'base' | null) => void;
   reset: () => void;
@@ -37,6 +39,7 @@ export const useAppStore = create<AppState>()(
       projectMembers: [],
       activityType: null,
       viewingStudentId: null,
+      onlineCollaborators: [],
       setCurrentProjectId: (id) => set({ currentProjectId: id }),
       setCurrentNoteId: (id) => set({ currentNoteId: id }),
       setSidebarSelectionId: (id) => set({ sidebarSelectionId: id }),
@@ -46,6 +49,7 @@ export const useAppStore = create<AppState>()(
       setProjectMembers: (members) => set({ projectMembers: members }),
       setActivityType: (type) => set({ activityType: type }),
       setViewingStudentId: (id) => set({ viewingStudentId: id }),
+      setOnlineCollaborators: (users) => set({ onlineCollaborators: users }),
       currentDocType: null,
       setCurrentDocType: (type) => set({ currentDocType: type }),
       reset: () => set({
@@ -58,6 +62,7 @@ export const useAppStore = create<AppState>()(
         projectMembers: [],
         activityType: null,
         viewingStudentId: null,
+        onlineCollaborators: [],
         currentDocType: null,
       }),
     }),

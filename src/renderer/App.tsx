@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core'
-import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
+import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense, memo } from 'react'
 import * as Y from 'yjs'
 import { Capacitor } from '@capacitor/core'
 import { Base } from './components/Base/Base'
@@ -7,11 +7,11 @@ import { Canvas } from './components/Canvas/Canvas'
 import { DocumentDashboard } from './components/Dashboard/DocumentDashboard'
 import CollaborativeEditor from './components/Editor/CollaborativeEditor'
 import { EditorToolbar } from './components/EditorToolbar/EditorToolbar'
-import { ShareDialog } from './components/ShareDialog/ShareDialog'
 import { Sidebar } from './components/Sidebar/Sidebar'
 import { Toolbar } from './components/Toolbar/Toolbar'
 import { FirebaseService } from './services/firebase'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useShallow } from 'zustand/react/shallow'
 
 import {
   Eye,
@@ -31,37 +31,36 @@ import {
   WifiOff,
   X
 } from 'lucide-react'
-import { ActivityAIAgent } from './components/Activities/ActivityAIAgent'
-import { ActivityBuilderInline } from './components/Activities/ActivityBuilderInline'
-import { StudentActivityDisplay } from './components/Activities/StudentActivityDisplay'
-import { VerificationBanner } from './components/auth/VerificationBanner'
-import { BacklinksPanel } from './components/Backlinks/BacklinksPanel'
-import { CollaboratorList } from './components/CollaboratorList/CollaboratorList'
-import { CommentsPanel } from './components/CommentsPanel/CommentsPanel'
-import { ContextMenu } from './components/ContextMenu/ContextMenu'
-import { DocumentOutline } from './components/DocumentOutline/DocumentOutline'
-import EvaluationResultPanel from './components/Evaluation/EvaluationResultPanel'
-import { ExportMenu } from './components/ExportMenu/ExportMenu'
-import { FindReplace } from './components/FindReplace/FindReplace'
-import { NotificationsDropdown } from './components/Notifications/NotificationsDropdown'
-
 // Lazy loaded heavy components
 const ActivityDashboard = lazy(() => import('./components/Activities/ActivityDashboard').then(m => ({ default: m.ActivityDashboard })));
 const ActivityPanel = lazy(() => import('./components/Activities/ActivityPanel').then(m => ({ default: m.ActivityPanel })));
 const FlashcardPanel = lazy(() => import('./components/Flashcards/FlashcardPanel').then(m => ({ default: m.FlashcardPanel })));
 const GraphView = lazy(() => import('./components/GraphView/GraphView').then(m => ({ default: m.GraphView })));
-import { PropertiesPanel } from './components/PropertiesPanel/PropertiesPanel'
-import { QuickSwitcher } from './components/QuickSwitcher/QuickSwitcher'
-import { SearchModal } from './components/Search/SearchModal'
-import { SlashCommand } from './components/SlashCommand/SlashCommand'
-import { VersionHistoryPanel } from './components/VersionHistory/VersionHistoryPanel'
-import { WordCountBar } from './components/WordCount/WordCount'
+const ActivityAIAgent = lazy(() => import('./components/Activities/ActivityAIAgent').then(m => ({ default: m.ActivityAIAgent })));
+const StudentActivityDisplay = lazy(() => import('./components/Activities/StudentActivityDisplay').then(m => ({ default: m.StudentActivityDisplay })));
+const BacklinksPanel = lazy(() => import('./components/Backlinks/BacklinksPanel').then(m => ({ default: m.BacklinksPanel })));
+const CollaboratorList = lazy(() => import('./components/CollaboratorList/CollaboratorList').then(m => ({ default: m.CollaboratorList })));
+const CommentsPanel = lazy(() => import('./components/CommentsPanel/CommentsPanel').then(m => ({ default: m.CommentsPanel })));
+const DocumentOutline = lazy(() => import('./components/DocumentOutline/DocumentOutline').then(m => ({ default: m.DocumentOutline })));
+const ExportMenu = lazy(() => import('./components/ExportMenu/ExportMenu').then(m => ({ default: m.ExportMenu })));
+const FindReplace = lazy(() => import('./components/FindReplace/FindReplace').then(m => ({ default: m.FindReplace })));
+const PropertiesPanel = lazy(() => import('./components/PropertiesPanel/PropertiesPanel').then(m => ({ default: m.PropertiesPanel })));
+const QuickSwitcher = lazy(() => import('./components/QuickSwitcher/QuickSwitcher').then(m => ({ default: m.QuickSwitcher })));
+const SearchModal = lazy(() => import('./components/Search/SearchModal').then(m => ({ default: m.SearchModal })));
+const SlashCommand = lazy(() => import('./components/SlashCommand/SlashCommand').then(m => ({ default: m.SlashCommand })));
+const VersionHistoryPanel = lazy(() => import('./components/VersionHistory/VersionHistoryPanel').then(m => ({ default: m.VersionHistoryPanel })));
+const ShareDialog = lazy(() => import('./components/ShareDialog/ShareDialog').then(m => ({ default: m.ShareDialog })));
+const ContextMenu = lazy(() => import('./components/ContextMenu/ContextMenu').then(m => ({ default: m.ContextMenu })));
+const WordCountBar = lazy(() => import('./components/WordCount/WordCount').then(m => ({ default: m.WordCountBar })));
+const ActivityBuilderInline = lazy(() => import('./components/Activities/ActivityBuilderInline').then(m => ({ default: m.ActivityBuilderInline })));
+const EvaluationResultPanel = lazy(() => import('./components/Evaluation/EvaluationResultPanel'));
+import { VerificationBanner } from './components/auth/VerificationBanner'
+import { NotificationsDropdown } from './components/Notifications/NotificationsDropdown'
 import { useAuth } from './hooks/useAuth'
 import { useUserProfile } from './hooks/useUserProfile'
 import { ActivityFlowService } from './services/ActivityFlowService'
 import { EvaluationResult, StudentEvaluationService } from './services/StudentEvaluationService'
 import { useAppStore } from './store/useAppStore'
-import { useShallow } from 'zustand/react/shallow'
 import { getUserAvatar } from './utils/avatar.utils'
 import { useNotifications } from './context/NotificationContext'
 
@@ -69,50 +68,124 @@ import { useNotifications } from './context/NotificationContext'
 const SESSION_COLORS = ['#7c6bf0', '#6dd49e', '#4ea1f7', '#e67a7a', '#e6c96e', '#9485f5']
 const SESSION_COLOR = SESSION_COLORS[Math.floor(Math.random() * SESSION_COLORS.length)]
 
-// ✅ Moved type declaration outside the component
 type RightPanelTab = 'collaborators' | 'comments' | 'outline' | 'backlinks' | 'graph'
+
+// ── Presence Tracker Component (Isolated Renders) ────────────────────────
+const PresenceTracker = memo(() => {
+  const { state: { user } } = useAuth();
+  const { 
+    currentNoteId, 
+    activeDocTitle,
+    setOnlineCollaborators 
+  } = useAppStore(useShallow(s => ({
+    currentNoteId: s.currentNoteId,
+    activeDocTitle: s.activeDocTitle,
+    setOnlineCollaborators: s.setOnlineCollaborators
+  })));
+  const { addNotification } = useNotifications();
+  const { profile } = useUserProfile(user?.uid);
+  const color = profile?.color || '#7c6bf0';
+  const username = profile?.name || user?.displayName || 'User';
+  const userPhoto = profile?.photoURL || null;
+
+  useEffect(() => {
+    if (!user?.uid || !currentNoteId) {
+      setOnlineCollaborators([]);
+      return;
+    }
+
+    const firebase = FirebaseService.getInstance();
+    const heartbeat = setInterval(() => {
+      firebase.updatePresence(currentNoteId, user.uid, {
+        name: username,
+        status: 'editing',
+        photoURL: userPhoto,
+        color: color,
+        platform: Capacitor.getPlatform() === 'web' ? (window.electronAPI ? 'desktop' : 'web') : 'mobile',
+        lastSeen: Date.now()
+      });
+    }, 10000);
+
+    firebase.updatePresence(currentNoteId, user.uid, {
+      name: username,
+      status: 'editing',
+      photoURL: userPhoto,
+      color: color,
+      platform: Capacitor.getPlatform() === 'web' ? (window.electronAPI ? 'desktop' : 'web') : 'mobile',
+      lastSeen: Date.now()
+    });
+
+    const unsubscribe = firebase.listenToPresence(currentNoteId, (users) => {
+      const now = Date.now();
+      const active = users.filter(u => {
+        const lastSeenMs = (u.lastSeen && typeof u.lastSeen === 'object' && 'seconds' in u.lastSeen)
+          ? u.lastSeen.seconds * 1000
+          : (typeof u.lastSeen === 'number' ? u.lastSeen : 0);
+        return (now - lastSeenMs) < 60000;
+      }).map(u => ({
+        id: u.uid,
+        name: u.name || 'Collaborator',
+        color: u.color || '#7c6bf0',
+        photoURL: u.photoURL,
+        platform: u.platform || 'unknown'
+      }));
+
+      // Only notify if we have the notification hook access (which we do here)
+      setOnlineCollaborators(active);
+    });
+
+    return () => {
+      clearInterval(heartbeat);
+      unsubscribe();
+    };
+  }, [user?.uid, currentNoteId, username, color, userPhoto, setOnlineCollaborators]);
+
+  return null;
+});
 
 export function App() {
   const {
-    currentNoteId,
-    setCurrentNoteId,
-    activeDocTitle,
-    setActiveDocTitle,
-    syncStatus,
-    setSyncStatus,
     currentProjectId,
-    setCurrentProjectId,
+    currentNoteId,
     sidebarSelectionId,
-    setSidebarSelectionId,
+    activeDocTitle,
+    syncStatus,
     viewerMode,
     projectMembers,
-    setProjectMembers,
     activityType,
-    setActivityType,
     viewingStudentId,
-    setViewingStudentId,
+    onlineCollaborators,
     currentDocType,
+    setCurrentProjectId,
+    setCurrentNoteId,
+    setSidebarSelectionId,
+    setActiveDocTitle,
+    setSyncStatus,
     setCurrentDocType,
-  } = useAppStore(useShallow((s) => ({
-    currentNoteId: s.currentNoteId,
-    setCurrentNoteId: s.setCurrentNoteId,
-    activeDocTitle: s.activeDocTitle,
-    setActiveDocTitle: s.setActiveDocTitle,
-    syncStatus: s.syncStatus,
-    setSyncStatus: s.setSyncStatus,
+    setProjectMembers,
+    setActivityType,
+    setViewingStudentId
+  } = useAppStore(useShallow(s => ({
     currentProjectId: s.currentProjectId,
-    setCurrentProjectId: s.setCurrentProjectId,
+    currentNoteId: s.currentNoteId,
     sidebarSelectionId: s.sidebarSelectionId,
-    setSidebarSelectionId: s.setSidebarSelectionId,
+    activeDocTitle: s.activeDocTitle,
+    syncStatus: s.syncStatus,
     viewerMode: s.viewerMode,
     projectMembers: s.projectMembers,
-    setProjectMembers: s.setProjectMembers,
     activityType: s.activityType,
-    setActivityType: s.setActivityType,
     viewingStudentId: s.viewingStudentId,
-    setViewingStudentId: s.setViewingStudentId,
+    onlineCollaborators: s.onlineCollaborators,
     currentDocType: s.currentDocType,
+    setCurrentProjectId: s.setCurrentProjectId,
+    setCurrentNoteId: s.setCurrentNoteId,
+    setSidebarSelectionId: s.setSidebarSelectionId,
+    setActiveDocTitle: s.setActiveDocTitle,
+    setSyncStatus: s.setSyncStatus,
     setCurrentDocType: s.setCurrentDocType,
+    setProjectMembers: s.setProjectMembers,
+    setActivityType: s.setActivityType,
+    setViewingStudentId: s.setViewingStudentId
   })));
   const { state: { user } } = useAuth()
 
@@ -205,77 +278,6 @@ export function App() {
       clearTimeout(timer);
     };
   }, [addNotification]);
-
-  // ── Project Presence (WebRTC Awareness) ──────────────────────────────────
-  const [onlineCollaborators, setOnlineCollaborators] = useState<{ id: string; name: string; color: string; photoURL?: string }[]>([]);
-
-  // ── Cross-Platform Presence (Firestore Heartbeat) ────────────────────────
-  useEffect(() => {
-    if (!user?.uid || !currentNoteId) {
-      setOnlineCollaborators([]);
-      return;
-    }
-
-    const firebase = FirebaseService.getInstance();
-
-    // 2. Cross-platform Presence Heartbeat (Note-specific)
-    const heartbeat = setInterval(() => {
-      firebase.updatePresence(currentNoteId, user.uid, {
-        name: username,
-        status: 'editing',
-        photoURL: userPhoto,
-        color: color,
-        platform: Capacitor.getPlatform() === 'web' ? (window.electronAPI ? 'desktop' : 'web') : 'mobile',
-        lastSeen: Date.now()
-      });
-    }, 10000);
-
-    // Initial heartbeat
-    firebase.updatePresence(currentNoteId, user.uid, {
-      name: username,
-      status: 'editing',
-      photoURL: userPhoto,
-      color: color,
-      platform: Capacitor.getPlatform() === 'web' ? (window.electronAPI ? 'desktop' : 'web') : 'mobile',
-      lastSeen: Date.now()
-    });
-
-    // 3. Listen to all collaborators (Cross-platform)
-    const unsubscribe = firebase.listenToPresence(currentNoteId, (users) => {
-      // Filter out stale users (> 60s)
-      const now = Date.now();
-      const active = users.filter(u => {
-        // Handle Firestore Timestamp vs local number
-        const lastSeenMs = (u.lastSeen && typeof u.lastSeen === 'object' && 'seconds' in u.lastSeen)
-          ? u.lastSeen.seconds * 1000
-          : (typeof u.lastSeen === 'number' ? u.lastSeen : 0);
-
-        return (now - lastSeenMs) < 60000;
-      }).map(u => ({
-        id: u.uid,
-        name: u.name || 'Collaborator',
-        color: u.color || '#7c6bf0',
-        photoURL: u.photoURL,
-        platform: u.platform || 'unknown'
-      }));
-
-      // Check for new joiners to show notification
-      setOnlineCollaborators(prev => {
-        const prevIds = new Set(prev.map(p => p.id));
-        active.forEach(u => {
-          if (!prevIds.has(u.id) && u.id !== user.uid) {
-            addNotification({ message: `${u.name} joined the document`, type: 'info' });
-          }
-        });
-        return active;
-      });
-    });
-
-    return () => {
-      clearInterval(heartbeat);
-      unsubscribe();
-    };
-  }, [user?.uid, currentNoteId, username, color, userPhoto]);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -1044,13 +1046,15 @@ export function App() {
     }
 
     return (
-      <CollaboratorList
-        members={mappedMembers}
-        onKick={handleKickMember}
-        isOwner={isOwner}
-        currentUserId={user?.uid}
-        onClose={() => setShowCollaboratorsMobile(false)}
-      />
+      <Suspense fallback={<div className="app-right-panel-loading">Loading List...</div>}>
+        <CollaboratorList
+          members={mappedMembers}
+          onKick={handleKickMember}
+          isOwner={isOwner}
+          currentUserId={user?.uid}
+          onClose={() => setShowCollaboratorsMobile(false)}
+        />
+      </Suspense>
     )
   }
 
@@ -1068,17 +1072,20 @@ export function App() {
         </div>
 
         {/* Quick Switcher (available even on dashboard) */}
-        <QuickSwitcher
-          isOpen={showQuickSwitcher}
-          onClose={() => setShowQuickSwitcher(false)}
-          onSelectDoc={(docId, title) => handleNavigateToDoc(docId, title)}
-        />
+        <Suspense fallback={null}>
+          <QuickSwitcher
+            isOpen={showQuickSwitcher}
+            onClose={() => setShowQuickSwitcher(false)}
+            onSelectDoc={(docId, title) => handleNavigateToDoc(docId, title)}
+          />
+        </Suspense>
       </div>
     );
   }
 
   return (
     <div className={`app-layout ${viewingStudentId ? 'app-layout--viewing-student' : ''}`}>
+      <PresenceTracker />
       <AnimatePresence>
         {isInitializingApp && (
           <motion.div
@@ -1599,51 +1606,58 @@ export function App() {
         </div>
 
         {/* Word Count Status Bar — hidden in admin dashboard mode */}
-        {showWordCount && editor && !isAdminDashboardMode && <WordCountBar editor={editor} />}
+        {showWordCount && editor && !isAdminDashboardMode && (
+          <Suspense fallback={null}>
+            <WordCountBar editor={editor} />
+          </Suspense>
+        )}
       </div>
 
-      {/* Quick Switcher Overlay */}
-      <QuickSwitcher
-        isOpen={showQuickSwitcher}
-        onClose={() => setShowQuickSwitcher(false)}
-        onSelectDoc={(docId, title) => handleNavigateToDoc(docId, title)}
-      />
-
-      {/* Share Dialog Overlay */}
-      <ShareDialog
-        isOpen={showShareDialog}
-        onClose={() => setShowShareDialog(false)}
-        projectId={currentProjectId || ''}
-        projectTitle={activeDocTitle}
-      />
-
-      {/* Global Search Modal */}
-      <SearchModal
-        isOpen={showSearchModal}
-        onClose={() => setShowSearchModal(false)}
-        onNavigateToDoc={(docId, title) => handleNavigateToDoc(docId, title)}
-        projectId={currentProjectId}
-      />
-
-      {/* Activity AI Agent — hidden when inline builder is shown in admin dashboard mode */}
-      {projectType === 'activity' && currentProjectId && isAdmin && !isAdminDashboardMode && (
-        <ActivityAIAgent projectId={currentProjectId} />
-      )}
-
-      {/* Floating Student Activity Card */}
-      {activityType === 'individual' && !isAdmin && currentProjectId && (
-        <StudentActivityDisplay projectId={currentProjectId} />
-      )}
-
-      {/* Floating Evaluation Result Panel */}
-      {evaluationResult && (
-        <EvaluationResultPanel
-          verdict={evaluationResult.verdict}
-          instructions={evaluationResult.instructions}
-          instructionTexts={evaluationResult.instructionTexts}
-          onClose={() => setEvaluationResult(null)}
+      {/* Overlays and Modals */}
+      <Suspense fallback={null}>
+        {/* Quick Switcher Overlay */}
+        <QuickSwitcher
+          isOpen={showQuickSwitcher}
+          onClose={() => setShowQuickSwitcher(false)}
+          onSelectDoc={(docId, title) => handleNavigateToDoc(docId, title)}
         />
-      )}
+
+        {/* Share Dialog Overlay */}
+        <ShareDialog
+          isOpen={showShareDialog}
+          onClose={() => setShowShareDialog(false)}
+          projectId={currentProjectId || ''}
+          projectTitle={activeDocTitle}
+        />
+
+        {/* Global Search Modal */}
+        <SearchModal
+          isOpen={showSearchModal}
+          onClose={() => setShowSearchModal(false)}
+          onNavigateToDoc={(docId, title) => handleNavigateToDoc(docId, title)}
+          projectId={currentProjectId}
+        />
+
+        {/* Activity AI Agent */}
+        {projectType === 'activity' && currentProjectId && isAdmin && !isAdminDashboardMode && (
+          <ActivityAIAgent projectId={currentProjectId} />
+        )}
+
+        {/* Floating Student Activity Card */}
+        {activityType === 'individual' && !isAdmin && currentProjectId && (
+          <StudentActivityDisplay projectId={currentProjectId} />
+        )}
+
+        {/* Floating Evaluation Result Panel */}
+        {evaluationResult && (
+          <EvaluationResultPanel
+            verdict={evaluationResult.verdict}
+            instructions={evaluationResult.instructions}
+            instructionTexts={evaluationResult.instructionTexts}
+            onClose={() => setEvaluationResult(null)}
+          />
+        )}
+      </Suspense>
     </div>
   )
 }
