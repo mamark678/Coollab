@@ -25,11 +25,14 @@ import {
   Maximize2,
   Menu,
   MessageSquare,
+  MoreVertical,
   Search,
+  Share2,
   Sliders,
   Sparkles,
   Target,
   Trophy,
+  User,
   WifiOff,
   X
 } from 'lucide-react'
@@ -143,6 +146,99 @@ const PresenceTracker = memo(() => {
   }, [user?.uid, currentNoteId, username, color, userPhoto, setOnlineCollaborators]);
 
   return null;
+});
+
+// ── Mobile More Menu (3-dot) ─────────────────────────────────────────────
+const MobileMoreMenu = memo(({ onHistory, onSearch, onProperties, showHistory, showProperties }: {
+  onHistory: () => void;
+  onSearch: () => void;
+  onProperties: () => void;
+  showHistory: boolean;
+  showProperties: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 32,
+          height: 32,
+          background: 'transparent',
+          border: 'none',
+          color: '#e8eaf0',
+          cursor: 'pointer',
+          borderRadius: 8,
+        }}
+        title="More actions"
+        type="button"
+      >
+        <MoreVertical size={16} />
+      </button>
+      {isOpen && (
+        <div style={{
+          position: 'absolute',
+          top: 'calc(100% + 4px)',
+          right: 0,
+          minWidth: 180,
+          background: '#1a1a2e',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: 12,
+          padding: 6,
+          zIndex: 2000,
+          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+        }}>
+          <button
+            onClick={() => { onSearch(); setIsOpen(false); }}
+            style={{
+              width: '100%', padding: '8px 12px', background: 'transparent', border: 'none',
+              borderRadius: 6, color: '#cbd5e1', cursor: 'pointer', textAlign: 'left',
+              display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500,
+            }}
+          >
+            <Search size={16} /> Search
+          </button>
+          <button
+            onClick={() => { onHistory(); setIsOpen(false); }}
+            style={{
+              width: '100%', padding: '8px 12px', background: showHistory ? 'rgba(124, 107, 240, 0.1)' : 'transparent',
+              border: 'none', borderRadius: 6, color: showHistory ? '#a78bfa' : '#cbd5e1',
+              cursor: 'pointer', textAlign: 'left',
+              display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500,
+            }}
+          >
+            <History size={16} /> History
+          </button>
+          <button
+            onClick={() => { onProperties(); setIsOpen(false); }}
+            style={{
+              width: '100%', padding: '8px 12px', background: showProperties ? 'rgba(124, 107, 240, 0.1)' : 'transparent',
+              border: 'none', borderRadius: 6, color: showProperties ? '#a78bfa' : '#cbd5e1',
+              cursor: 'pointer', textAlign: 'left',
+              display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500,
+            }}
+          >
+            <Sliders size={16} /> Properties
+          </button>
+        </div>
+      )}
+    </div>
+  );
 });
 
 export function App() {
@@ -299,10 +395,11 @@ export function App() {
     }
   }, [setCurrentNoteId, setActiveDocTitle, setSidebarSelectionId, setCurrentDocType])
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
+  const [mobileTab, setMobileTab] = useState<'home' | 'editor' | 'activities' | 'leaderboard' | 'profile'>('editor')
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    const handleResize = () => setIsMobile(window.innerWidth < 1024)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
@@ -917,146 +1014,6 @@ export function App() {
     )
   }
 
-  // ── Mobile Layout Render ──────────────────────────────────────────────────
-  if (isMobile) {
-    return (
-      <div className="mobile-app-layout">
-        {/* Mobile Header */}
-        <header className="mobile-header">
-          <div className="mobile-header__left">
-            <h1 className="mobile-header__title">{activeDocTitle || 'Coollab'}</h1>
-            {onlineCollaborators.length > 0 && (
-              <div className="mobile-header__presence">
-                <Target size={12} />
-                <span>{onlineCollaborators.length} active</span>
-              </div>
-            )}
-          </div>
-          <div className="mobile-header__actions">
-            <button className="mobile-header__btn" onClick={() => setShowComments(!showComments)}>
-              <MessageSquare size={18} />
-            </button>
-            <button className="mobile-header__btn" onClick={() => setShowShareDialog(true)}>
-              <Link2 size={18} />
-            </button>
-            <button className="mobile-header__btn" onClick={() => setShowSearchModal(true)}>
-              <Search size={18} />
-            </button>
-          </div>
-        </header>
-
-        {/* Main Editor Area */}
-        <main className="mobile-content">
-          <div className="mobile-editor-container">
-            {currentNoteId ? (
-              <CollaborativeEditor
-                key={currentNoteId}
-                roomName={currentNoteId}
-                projectId={currentProjectId}
-                username={username}
-                userId={user?.uid}
-                color={color}
-                title={activeDocTitle}
-                onTitleChange={handleUpdateTitle}
-                onContentUpdate={stableOnContentUpdate}
-                onEditorReady={handleEditorReady}
-                readOnly={viewerMode}
-              />
-            ) : (
-              <div className="mobile-empty-state">
-                <FileText size={48} opacity={0.2} />
-                <p>Select a document to begin</p>
-              </div>
-            )}
-          </div>
-
-          {/* Contextual Side Panels (as overlays on mobile) */}
-          <AnimatePresence>
-            {showComments && (
-              <motion.div 
-                initial={{ y: '100%' }} 
-                animate={{ y: 0 }} 
-                exit={{ y: '100%' }}
-                className="mobile-panel-overlay"
-              >
-                <div className="mobile-panel-header">
-                  <h3>Comments</h3>
-                  <button onClick={() => setShowComments(false)}><X size={20} /></button>
-                </div>
-                <div className="mobile-panel-content">
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <CommentsPanel 
-                      editor={editor} 
-                      username={username} 
-                      userColor={color} 
-                    />
-                  </Suspense>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </main>
-
-        {/* Floating Formatting Toolbar (Keyboard Reachable) */}
-        {editor && (
-          <div className="mobile-toolbar-fixed">
-            <EditorToolbar
-              editor={editor}
-              onToggleWordCount={() => setShowWordCount((v) => !v)}
-              showWordCount={showWordCount}
-            />
-          </div>
-        )}
-
-        {/* Bottom Navigation Bar */}
-        <nav className="mobile-bottom-nav">
-          <button className="mobile-nav-btn" onClick={() => handleNavigateToDoc('')}>
-            <Home size={20} />
-            <span>Home</span>
-          </button>
-          <button className="mobile-nav-btn mobile-nav-btn--active">
-            <FileText size={20} />
-            <span>Editor</span>
-          </button>
-          <button 
-            className={`mobile-nav-btn ${showActivities ? 'mobile-nav-btn--active' : ''}`} 
-            onClick={() => {
-              closeAllRightPanels();
-              setShowActivities(true);
-            }}
-          >
-            <Layers size={20} />
-            <span>Activities</span>
-          </button>
-          <button 
-            className={`mobile-nav-btn ${showLeaderboard ? 'mobile-nav-btn--active' : ''}`}
-            onClick={() => {
-              closeAllRightPanels();
-              setShowLeaderboard(true);
-            }}
-          >
-            <Trophy size={20} />
-            <span>Rank</span>
-          </button>
-          <button className="mobile-nav-btn" onClick={() => setShowProperties(true)}>
-            <Sliders size={20} />
-            <span>Settings</span>
-          </button>
-        </nav>
-
-        {/* Overlays */}
-        <Suspense fallback={null}>
-          <SearchModal 
-            isOpen={showSearchModal} 
-            onClose={() => setShowSearchModal(false)} 
-            onNavigateToDoc={handleNavigateToDoc} 
-            projectId={currentProjectId || ''}
-          />
-          <ShareDialog isOpen={showShareDialog} onClose={() => setShowShareDialog(false)} projectId={currentProjectId || ''} projectTitle={activeDocTitle} />
-        </Suspense>
-      </div>
-    )
-  }
 
   // ── Determine right panel ──────────────────────────────────────────────
   const renderRightPanel = (): React.ReactNode => {
@@ -1233,7 +1190,7 @@ export function App() {
   }
 
   return (
-    <div className={`app-layout ${viewingStudentId ? 'app-layout--viewing-student' : ''}`}>
+    <div className={`app-layout ${isMobile ? 'is-mobile' : ''} ${viewingStudentId ? 'app-layout--viewing-student' : ''} ${isMobileSidebarOpen ? 'mobile-sidebar-open' : ''}`}>
       <PresenceTracker />
       {isInitializingApp && (
         <div 
@@ -1348,131 +1305,71 @@ export function App() {
           </div>
         </div>
       )}
-      {/* Icon Rail (Obsidian-style left icon strip) */}
-      <div className="app-icon-rail">
-        <button
-          className="app-icon-rail__btn"
-          onClick={() => {
-            setCurrentProjectId(null);
-            setCurrentNoteId(null);
-          }}
-          title="Home (Projects)"
-          type="button"
-        >
-          <Home size={18} />
-        </button>
-
-        {/* Editor, Graph, Backlinks — hidden when admin is in dashboard mode (not viewing student) */}
-        {!isAdminDashboardMode && (
-          <>
-            <button
-              className={`app-icon-rail__btn ${!showGraphPanel && !showBacklinks ? 'app-icon-rail__btn--active' : ''}`}
-              onClick={() => {
-                setShowGraphPanel(false)
-                setShowBacklinks(false)
-              }}
-              title="Editor"
-              type="button"
-              id="icon-rail-editor"
-            >
-              <FileText size={18} />
-            </button>
-            <button
-              className={`app-icon-rail__btn ${showGraphPanel ? 'app-icon-rail__btn--active' : ''}`}
-              onClick={() => {
-                setShowGraphPanel((v) => !v)
-                if (!showGraphPanel) {
-                  setShowBacklinks(false)
-                  setShowComments(false)
-                  setShowHistory(false)
-                  setShowProperties(false)
-                  setShowOutline(false)
-                }
-              }}
-              title="Graph View (Ctrl+Shift+G)"
-              type="button"
-              id="icon-rail-graph"
-            >
-              <GitBranch size={18} />
-            </button>
-            <button
-              className={`app-icon-rail__btn ${showBacklinks ? 'app-icon-rail__btn--active' : ''}`}
-              onClick={() => {
-                setShowBacklinks((v) => !v)
-                if (!showBacklinks) {
-                  setShowGraphPanel(false)
-                  closeAllRightPanels()
-                  setShowBacklinks(true)
-                }
-              }}
-              title="Backlinks"
-              type="button"
-              id="icon-rail-backlinks"
-            >
-              <Link2 size={18} />
-            </button>
-          </>
-        )}
-
-        <div style={{ width: '60%', height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
-
-        {/* Flashcards — visible for both students and admin */}
-        <button
-          className={`app-icon-rail__btn ${showFlashcards ? 'app-icon-rail__btn--active' : ''}`}
-          onClick={() => {
-            const opening = !showFlashcards
-            closeAllRightPanels()
-            if (opening) {
-              setShowFlashcards(true)
-              setShowGraphPanel(false)
-            }
-          }}
-          title="Flashcards"
-          type="button"
-          id="icon-rail-flashcards"
-        >
-          <Layers size={18} />
-        </button>
-
-        {/* Activities — only show for students (non-admin), NOT for admin */}
-        {!isAdmin && (
+        {/* Icon Rail (Obsidian-style left icon strip) */}
+        <div className="app-icon-rail">
           <button
-            className={`app-icon-rail__btn ${showActivities ? 'app-icon-rail__btn--active' : ''}`}
+            className="app-icon-rail__btn"
             onClick={() => {
-              const opening = !showActivities
-              closeAllRightPanels()
-              if (opening) {
-                setShowActivities(true)
-                setShowGraphPanel(false)
-              }
+              setCurrentProjectId(null);
+              setCurrentNoteId(null);
             }}
-            title="Activities"
-            type="button"
-            id="icon-rail-activities"
+            title="Home"
           >
-            <Target size={18} />
+            <Home size={20} />
           </button>
-        )}
 
-        {/* Activity Dashboard — admin only */}
-        {projectType === 'activity' && isAdmin && (
-          <button
-            className={`app-icon-rail__btn ${showLeaderboard ? 'app-icon-rail__btn--active' : ''}`}
-            onClick={() => {
-              const opening = !showLeaderboard
-              closeAllRightPanels()
-              if (opening) {
-                setShowLeaderboard(true)
-                setShowGraphPanel(false)
-              }
-            }}
-            title="Activity Dashboard"
-            type="button"
-          >
-            <Trophy size={18} />
-          </button>
-        )}
-      </div>
+          {!isAdminDashboardMode && (
+            <>
+              <button
+                className={`app-icon-rail__btn ${!showGraphPanel && !showBacklinks ? 'app-icon-rail__btn--active' : ''}`}
+                onClick={() => {
+                  setShowGraphPanel(false);
+                  setShowBacklinks(false);
+                }}
+                title="Editor"
+              >
+                <FileText size={20} />
+              </button>
+            </>
+          )}
+          
+          {!isAdmin && (
+            <button
+              className={`app-icon-rail__btn ${showActivities ? 'app-icon-rail__btn--active' : ''}`}
+              onClick={() => {
+                const opening = !showActivities;
+                closeAllRightPanels();
+                if (opening) setShowActivities(true);
+              }}
+              title="Activities"
+            >
+              <Layers size={20} />
+            </button>
+          )}
+
+          {isAdmin && projectType === 'activity' && (
+            <button
+              className={`app-icon-rail__btn ${showLeaderboard ? 'app-icon-rail__btn--active' : ''}`}
+              onClick={() => {
+                const opening = !showLeaderboard;
+                closeAllRightPanels();
+                if (opening) setShowLeaderboard(true);
+              }}
+              title="Rankings"
+            >
+              <Trophy size={20} />
+            </button>
+          )}
+
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <button className="app-icon-rail__btn" onClick={() => setShowSearchModal(true)} title="Global Search">
+              <Search size={20} />
+            </button>
+            <button className="app-icon-rail__btn" onClick={() => setShowProperties(true)} title="Settings">
+              <Sliders size={20} />
+            </button>
+          </div>
+        </div>
 
       {/* Sidebar */}
       <Sidebar
@@ -1491,8 +1388,8 @@ export function App() {
         <div className="app-top-bar">
           <button
             className="app-mobile-menu-btn"
-            onClick={() => setIsMobileSidebarOpen(true)}
-            style={{ display: 'none', background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '8px', cursor: 'pointer', marginLeft: '8px' }}
+            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
+            style={{ display: isMobile ? 'flex' : 'none', background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '8px', cursor: 'pointer', marginLeft: '8px' }}
           >
             <Menu size={20} />
           </button>
@@ -1507,46 +1404,52 @@ export function App() {
           <div className="app-top-bar__actions">
             {!isAdminDashboardMode && (
               <>
-                <button
-                  className="app-top-bar__panel-btn"
-                  onClick={() => setShowSearchModal(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 32,
-                    height: 32,
-                    background: 'transparent',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: 8,
-                    color: '#e8eaf0',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    flexShrink: 0
-                  }}
-                  title="Search (Ctrl+K)"
-                  type="button"
-                >
-                  <Search size={16} />
-                </button>
-                <NotificationsDropdown />
-                <button
-                  className={`app-top-bar__panel-btn ${showHistory ? 'app-top-bar__panel-btn--active' : ''}`}
-                  onClick={() => {
-                    setShowHistory((v) => !v)
-                    if (!showHistory) {
-                      setShowComments(false)
-                      setShowProperties(false)
-                      setShowOutline(false)
-                      setShowBacklinks(false)
-                    }
-                  }}
-                  title="Version History"
-                  type="button"
-                >
-                  <History size={14} />
-                  History
-                </button>
+                {/* On mobile, show only the most relevant icons */}
+                {!isMobile && (
+                  <button
+                    className="app-top-bar__panel-btn"
+                    onClick={() => setShowSearchModal(true)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 32,
+                      background: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: 8,
+                      color: '#e8eaf0',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      flexShrink: 0
+                    }}
+                    title="Search (Ctrl+K)"
+                    type="button"
+                  >
+                    <Search size={16} />
+                  </button>
+                )}
+                {!isMobile && <NotificationsDropdown />}
+                {!isMobile && (
+                  <button
+                    className={`app-top-bar__panel-btn ${showHistory ? 'app-top-bar__panel-btn--active' : ''}`}
+                    onClick={() => {
+                      setShowHistory((v) => !v)
+                      if (!showHistory) {
+                        setShowComments(false)
+                        setShowProperties(false)
+                        setShowOutline(false)
+                        setShowBacklinks(false)
+                      }
+                    }}
+                    title="Version History"
+                    type="button"
+                  >
+                    <History size={14} />
+                    History
+                  </button>
+                )}
+                {/* Comment button — shown on both mobile and desktop */}
                 <button
                   className={`app-top-bar__panel-btn ${showComments ? 'app-top-bar__panel-btn--active' : ''}`}
                   onClick={() => {
@@ -1562,28 +1465,70 @@ export function App() {
                   type="button"
                 >
                   <MessageSquare size={14} />
-                  Comment
+                  {!isMobile && 'Comment'}
                 </button>
-                <button
-                  className={`app-top-bar__panel-btn ${showProperties ? 'app-top-bar__panel-btn--active' : ''}`}
-                  onClick={() => {
-                    setShowProperties((v) => !v)
-                    if (!showProperties) {
-                      setShowComments(false)
-                      setShowHistory(false)
-                      setShowOutline(false)
-                      setShowBacklinks(false)
-                    }
-                  }}
-                  title="Toggle Properties Panel"
-                  type="button"
-                >
-                  <Sliders size={14} />
-                  Properties
-                </button>
-                <div style={{ flexShrink: 0 }}>
-                  {editor && <ExportMenu editor={editor} />}
-                </div>
+                {/* Share button — shown on mobile as icon only */}
+                {isMobile && (
+                  <button
+                    className="app-top-bar__panel-btn"
+                    onClick={() => setShowShareDialog(true)}
+                    title="Share"
+                    type="button"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 32,
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#e8eaf0',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <Share2 size={14} />
+                  </button>
+                )}
+                {!isMobile && (
+                  <button
+                    className={`app-top-bar__panel-btn ${showProperties ? 'app-top-bar__panel-btn--active' : ''}`}
+                    onClick={() => {
+                      setShowProperties((v) => !v)
+                      if (!showProperties) {
+                        setShowComments(false)
+                        setShowHistory(false)
+                        setShowOutline(false)
+                        setShowBacklinks(false)
+                      }
+                    }}
+                    title="Toggle Properties Panel"
+                    type="button"
+                  >
+                    <Sliders size={14} />
+                    Properties
+                  </button>
+                )}
+                {!isMobile && (
+                  <div style={{ flexShrink: 0 }}>
+                    {editor && <ExportMenu editor={editor} />}
+                  </div>
+                )}
+                {/* Mobile: 3-dot more menu for additional actions */}
+                {isMobile && (
+                  <MobileMoreMenu
+                    onHistory={() => {
+                      setShowHistory((v) => !v);
+                      if (!showHistory) { setShowComments(false); setShowProperties(false); }
+                    }}
+                    onSearch={() => setShowSearchModal(true)}
+                    onProperties={() => {
+                      setShowProperties((v) => !v);
+                      if (!showProperties) { setShowComments(false); setShowHistory(false); }
+                    }}
+                    showHistory={showHistory}
+                    showProperties={showProperties}
+                  />
+                )}
               </>
             )}
           </div>
@@ -1761,6 +1706,81 @@ export function App() {
           />
         )}
       </Suspense>
+
+      {/* ── Mobile Bottom Navigation Bar ── */}
+      {isMobile && (
+        <nav className="mobile-bottom-nav" id="mobile-bottom-nav">
+          <button
+            className={`mobile-bottom-nav__item ${mobileTab === 'home' ? 'mobile-bottom-nav__item--active' : ''}`}
+            onClick={() => {
+              setMobileTab('home');
+              setCurrentProjectId(null);
+              setCurrentNoteId(null);
+            }}
+            type="button"
+          >
+            <Home size={20} />
+            <span className="mobile-bottom-nav__label">Home</span>
+          </button>
+
+          <button
+            className={`mobile-bottom-nav__item ${mobileTab === 'editor' ? 'mobile-bottom-nav__item--active' : ''}`}
+            onClick={() => {
+              setMobileTab('editor');
+              closeAllRightPanels();
+            }}
+            type="button"
+          >
+            <FileText size={20} />
+            <span className="mobile-bottom-nav__label">Editor</span>
+          </button>
+
+          {!isAdmin && (
+            <button
+              className={`mobile-bottom-nav__item ${mobileTab === 'activities' ? 'mobile-bottom-nav__item--active' : ''}`}
+              onClick={() => {
+                const opening = mobileTab !== 'activities';
+                setMobileTab(opening ? 'activities' : 'editor');
+                closeAllRightPanels();
+                if (opening) setShowActivities(true);
+              }}
+              type="button"
+            >
+              <Layers size={20} />
+              <span className="mobile-bottom-nav__label">Activities</span>
+            </button>
+          )}
+
+          {isAdmin && projectType === 'activity' && (
+            <button
+              className={`mobile-bottom-nav__item ${mobileTab === 'leaderboard' ? 'mobile-bottom-nav__item--active' : ''}`}
+              onClick={() => {
+                const opening = mobileTab !== 'leaderboard';
+                setMobileTab(opening ? 'leaderboard' : 'editor');
+                closeAllRightPanels();
+                if (opening) setShowLeaderboard(true);
+              }}
+              type="button"
+            >
+              <Trophy size={20} />
+              <span className="mobile-bottom-nav__label">Rankings</span>
+            </button>
+          )}
+
+          <button
+            className={`mobile-bottom-nav__item ${mobileTab === 'profile' ? 'mobile-bottom-nav__item--active' : ''}`}
+            onClick={() => {
+              setMobileTab('profile');
+              closeAllRightPanels();
+              setShowProperties(true);
+            }}
+            type="button"
+          >
+            <User size={20} />
+            <span className="mobile-bottom-nav__label">Profile</span>
+          </button>
+        </nav>
+      )}
     </div>
   )
 }

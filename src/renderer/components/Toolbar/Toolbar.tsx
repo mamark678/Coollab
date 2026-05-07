@@ -1,5 +1,5 @@
-import { ArrowLeft, Check, RefreshCw, Share2, WifiOff } from 'lucide-react';
-import React, { memo } from 'react';
+import { ArrowLeft, Check, RefreshCw, Share2, Users, WifiOff } from 'lucide-react';
+import React, { memo, useEffect, useState } from 'react';
 import { useAppStore } from '../../store/useAppStore';
 import type { ToolbarProps } from './Toolbar.types';
 
@@ -53,6 +53,61 @@ export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syn
   const config = statusConfig[syncIndicator];
   const StatusIcon = statusIcons[syncIndicator] || Check;
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // ── Mobile layout: Title + active count on the left ──
+  if (isMobile) {
+    return (
+      <div style={{
+        padding: '6px 8px 6px 12px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        flex: 1,
+        minWidth: 0,
+      }}>
+        {/* Title + Active count */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: '15px',
+            fontWeight: 700,
+            color: 'var(--text-primary)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            lineHeight: '1.3',
+          }}>
+            {title || 'Untitled'}
+          </div>
+          <div
+            onClick={onCollaboratorsClick}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              fontWeight: 500,
+              cursor: onCollaboratorsClick ? 'pointer' : 'default',
+              lineHeight: '1.2',
+              marginTop: '1px',
+            }}
+          >
+            <Users size={11} style={{ opacity: 0.7 }} />
+            <span>{collaborators.length > 0 ? `${collaborators.length} active` : 'No collaborators'}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Desktop layout: original design ──
   return (
     <div style={{
       padding: '10px 16px 10px 20px',
@@ -163,4 +218,3 @@ export const Toolbar: React.FC<ToolbarProps> = memo(({ title, onTitleChange, syn
     </div>
   );
 });
-

@@ -969,216 +969,298 @@ body {
     border-left: 1px solid var(--border-primary);
     box-shadow: -4px 0 16px rgba(0, 0, 0, 0.3);
   }
-}
 
-/* ── Mobile Responsive Layout ────────────────────────────────────────────── */
-
-.mobile-app-layout {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  width: 100vw;
-  background: var(--surface-crust);
-  overflow: hidden;
-  position: relative;
-}
-
-.mobile-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 16px;
-  background: var(--surface-mantle);
-  border-bottom: 1px solid var(--border-primary);
-  flex-shrink: 0;
-  z-index: 100;
-}
-
-.mobile-header__left {
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-header__title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-primary);
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-header__presence {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 10px;
-  color: var(--status-success);
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.mobile-header__actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.mobile-header__btn {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  border-radius: 50%;
-}
-
-.mobile-header__btn:active {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.mobile-content {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-}
-
-.mobile-editor-container {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 16px 120px; /* Padding for bottom bars */
-}
-
-.mobile-empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-faint);
-  gap: 12px;
-}
-
-/* ── Mobile Bottom Bars ────────────────────────────────────────────────── */
-
-.mobile-toolbar-fixed {
-  position: fixed;
-  bottom: 56px; /* Height of bottom nav */
-  left: 0;
-  right: 0;
-  z-index: 90;
-  background: #111122;
-  border-top: 1px solid var(--border-primary);
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.mobile-bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 56px;
-  background: var(--surface-mantle);
-  border-top: 1px solid var(--border-primary);
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  padding-bottom: env(safe-area-inset-bottom);
-  z-index: 100;
-}
-
-.mobile-nav-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 500;
-  width: 20%;
-  height: 100%;
-}
-
-.mobile-nav-btn--active {
-  color: var(--accent-primary);
-}
-
-/* ── Mobile Panels (Overlays) ─────────────────────────────────────────── */
-
-.mobile-panel-overlay {
-  position: absolute;
-  inset: 0;
-  background: var(--surface-base);
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-}
-
-.mobile-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 16px;
-  border-bottom: 1px solid var(--border-primary);
-}
-
-.mobile-panel-header h3 {
-  font-size: 15px;
-  font-weight: 700;
-}
-
-.mobile-panel-content {
-  flex: 1;
-  overflow-y: auto;
-}
-
-/* ── Responsive Overrides ─────────────────────────────────────────────── */
-
-@media (max-width: 768px) {
-  .editor-toolbar {
-    height: 48px !important;
-    padding: 0 8px !important;
-    overflow-x: auto !important;
-    scrollbar-width: none !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
-  }
-  
-  .editor-toolbar::-webkit-scrollbar {
+  /* Hide desktop icon rail on tablet too */
+  .app-icon-rail {
     display: none !important;
   }
 
+  /* Show bottom nav on tablet */
+  .mobile-bottom-nav {
+    display: flex !important;
+  }
+}
+
+/* ── Fully Responsive Layout System ────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+    position: relative;
+  }
+
+  /* ── Hide desktop icon rail on mobile ── */
+  .app-icon-rail {
+    display: none !important;
+  }
+
+  /* ── Sidebar Drawer (slides in from left) ── */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 300px;
+    max-width: 85vw;
+    z-index: 1200;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: var(--surface-base);
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.4);
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 1150;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-smooth);
+  }
+
+  .sidebar-overlay.mobile-open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  /* ── Main area fills screen ── */
+  .app-main {
+    width: 100%;
+    height: 100vh;
+    border-radius: 0 !important;
+    padding-bottom: 110px; /* Space for bottom formatting toolbar + bottom nav */
+  }
+
+  /* ── Compact Mobile Top Bar ── */
+  .app-top-bar {
+    padding: 0 4px 0 0;
+    height: 52px;
+    background: var(--surface-crust);
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  .app-mobile-menu-btn {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+  }
+
+  /* Hide the desktop top-bar actions (History/Comment/Properties/Export text buttons) */
+  .app-top-bar__actions {
+    gap: 6px;
+    padding-right: 8px;
+  }
+
+  /* Keep only icon, hide label text in top-bar buttons */
+  .app-top-bar__panel-btn {
+    padding: 0 !important;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+    border: none !important;
+    font-size: 0 !important; /* Hide text */
+    gap: 0 !important;
+  }
+
+  .app-top-bar__panel-btn svg {
+    flex-shrink: 0;
+  }
+
+  /* Hide the share button text — icon only */
+  #toolbar-share span {
+    display: none;
+  }
+
+  #toolbar-share {
+    padding: 0 8px !important;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .app-logo-text {
+    display: none;
+  }
+
+  .collaborator-list-wrapper {
+    display: none;
+  }
+
+  /* ── Editor Toolbar → Bottom Formatting Bar ── */
+  .editor-toolbar {
+    position: fixed !important;
+    bottom: 60px; /* Sits above the bottom nav bar */
+    left: 0;
+    right: 0;
+    z-index: 900;
+    height: 46px !important;
+    padding: 0 8px !important;
+    overflow-x: auto !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background: var(--surface-mantle) !important;
+    border-top: 1px solid var(--border-primary);
+    border-bottom: none !important;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Slim down toolbar items for mobile */
   .toolbar-group {
     gap: 0 !important;
   }
 
   .toolbar-btn {
-    width: 44px !important;
-    height: 44px !important;
-    border-radius: 4px !important;
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 10px !important;
   }
 
   .toolbar-dropdown__trigger {
-    height: 44px !important;
+    height: 38px !important;
     padding: 0 8px !important;
   }
 
   .toolbar-divider {
-    margin: 0 4px !important;
+    height: 20px;
+    margin: 0 4px;
   }
-  
+
+  /* Toolbar dropdown menus should open upward on mobile (since toolbar is at bottom) */
+  .toolbar-dropdown__menu {
+    top: auto !important;
+    bottom: calc(100% + 8px) !important;
+  }
+
+  .toolbar-color-picker__popup {
+    top: auto !important;
+    bottom: calc(100% + 8px) !important;
+  }
+
+  /* ── Content Area ── */
   .collab-editor-content {
-    padding: 16px;
-    font-size: 16px;
+    padding: 16px !important;
+    font-size: 16px !important;
+  }
+
+  /* ── Right Panels (full-screen overlay) ── */
+  .app-right-panel {
+    position: fixed;
+    top: 52px;
+    right: 0;
+    bottom: 0;
+    width: 100% !important;
+    z-index: 1000;
+    background: var(--surface-base);
+    animation: slideInRight 0.3s ease-out;
+  }
+
+  @keyframes slideInRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+
+  /* ── Bottom Navigation Bar ── */
+  .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--surface-crust);
+    border-top: 1px solid var(--border-primary);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    z-index: 950;
+    padding: 0 8px;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    backdrop-filter: blur(12px);
+  }
+
+  .mobile-bottom-nav__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    flex: 1;
+    padding: 6px 0;
+    background: transparent;
+    border: none;
+    color: var(--text-faint);
+    cursor: pointer;
+    transition: color 0.2s ease;
+    -webkit-tap-highlight-color: transparent;
+    position: relative;
+  }
+
+  .mobile-bottom-nav__item:active {
+    transform: scale(0.92);
+  }
+
+  .mobile-bottom-nav__item--active {
+    color: var(--accent-primary);
+  }
+
+  .mobile-bottom-nav__item--active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 24px;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: var(--accent-primary);
+  }
+
+  .mobile-bottom-nav__label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+
+  /* ── Viewing Student Banner (adjust for mobile) ── */
+  .viewing-student-banner {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+  }
+
+  /* ── Word Count (reposition above bottom toolbar) ── */
+  .word-count-bar {
+    position: fixed !important;
+    bottom: 106px !important; /* Above the formatting toolbar + nav */
+    left: 0;
+    right: 0;
+    z-index: 890;
+  }
+}
+
+/* ── Hide bottom nav on desktop ── */
+.mobile-bottom-nav {
+  display: none;
+}
+
+@media (min-width: 769px) {
+  .mobile-bottom-nav {
+    display: none !important;
   }
 }
