@@ -17,11 +17,12 @@ import TaskList from '@tiptap/extension-task-list';
 import TextAlign from '@tiptap/extension-text-align';
 import TextStyle from '@tiptap/extension-text-style';
 import Underline from '@tiptap/extension-underline';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { EditorContent, useEditor, BubbleMenu } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'; // ← useRef added here
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { WebrtcProvider } from 'y-webrtc';
 import * as Y from 'yjs';
+import { Bold, Italic, Underline as UnderlineIcon, Link as LinkIcon, Highlighter, Palette } from 'lucide-react';
 import { CommentMark } from '../../extensions/CommentMark';
 import { FontSize } from '../../extensions/FontSize';
 import { ResizableImage } from '../../extensions/ResizableImage/ResizableImageNode.tsx';
@@ -130,7 +131,6 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
   const yjsDoc = yjsService.getDoc();
   const sharedTitle = yjsDoc.getText('title');
 
-  // ← FIXED: bridgeClocksRef is now at the top of the component, not inside useEffect
   const bridgeClocksRef = useRef<Map<number, number>>(new Map());
 
   useEffect(() => {
@@ -142,9 +142,7 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
       const isDefault = (t: string) => ['Untitled Document', 'New Document', ''].includes(t);
 
       if (currentYTitle !== localTitle && currentYTitle.length > 0) {
-        // Bug 1 Fix: Do not let a stale default Yjs title overwrite a real Firestore title
         if (isDefault(currentYTitle) && !isDefault(localTitle)) {
-          // Push the real title back to Yjs to fix the stale state
           yjsDoc.transact(() => {
             sharedTitle.delete(0, sharedTitle.length);
             sharedTitle.insert(0, title || '');
@@ -161,7 +159,6 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
     const isDefault = (t: string) => ['Untitled Document', 'New Document', ''].includes(t);
     const localTitle = title?.trim() || '';
 
-    // Bug 1 Fix: Initialize Yjs from Firestore on load if Yjs is default
     if (isDefault(currentY) && !isDefault(localTitle)) {
       yjsDoc.transact(() => {
         if (sharedTitle.length > 0) {
@@ -305,7 +302,7 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
     };
   }, [editor, noteId, readOnly, userId, username]);
 
-  // ── Remote Cursor Sync (Firestore -> Awareness Bridge) ────────────────
+  // ── Remote Cursor Sync ────────────────
   useEffect(() => {
     if (!provider || !noteId) return;
 
@@ -322,14 +319,9 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
       const activeBridgeClientIDs = new Set<number>();
 
       users.forEach(u => {
-        // Only bridge Flutter users — Electron users use native WebRTC awareness
         if (u.platform !== 'flutter') return;
-
-        // Skip self
         if (u.uid === userId) return;
-        console.log('[Bridge] Flutter user data:', JSON.stringify(u));
-        console.log('[Bridge] cursorIndex:', u.cursorIndex, 'selectionBase:', u.selectionBase, 'selectionExtent:', u.selectionExtent);
-        // Skip stale users
+
         const lastSeenMs = (u.lastSeen && typeof u.lastSeen === 'object' && 'seconds' in u.lastSeen)
           ? u.lastSeen.seconds * 1000
           : (typeof u.lastSeen === 'number' ? u.lastSeen : 0);
@@ -343,11 +335,6 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
           const currentClock = (bridgeClocksRef.current.get(clientID) ?? 0) + 1;
           bridgeClocksRef.current.set(clientID, currentClock);
 
-          const fragment = yjsDoc.getXmlFragment('coollab-page-0');
-
-          // XmlFragment index 0 is the only valid anchor when fragment has 1 item
-          // We store the raw character offset in the state and let the cursor
-          // render via a custom render function instead of relative positions
           const newState = {
             clock: currentClock,
             user: {
@@ -355,11 +342,9 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
               color: u.color || '#7c6bf0',
               id: u.uid,
             },
-            // Don't use relative positions — store absolute index directly
             cursor: null,
             anchor: null,
             head: null,
-            // Custom fields for our bridge renderer
             cursorIndex: u.cursorIndex,
             selectionBase: u.selectionBase ?? u.cursorIndex,
             selectionExtent: u.selectionExtent ?? u.cursorIndex,
@@ -377,7 +362,6 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
         }
       });
 
-      // Cleanup offline bridged users
       currentAwarenessStates.forEach((state: any, clientID) => {
         if (state?.user?.id && !activeBridgeClientIDs.has(clientID)) {
           if (state.lastUpdated) {
@@ -395,7 +379,7 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
     return () => unsubscribe();
   }, [provider, noteId, userId]);
 
-  // ── Awareness -> Firestore Bridge (Electron -> Flutter) ────────────────
+  // ── Awareness -> Firestore Bridge ────────────────
   useEffect(() => {
     if (!provider || !noteId || !userId) return;
 
@@ -456,7 +440,7 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
     }
   }, [editor, onEditorReady]);
 
-  // ── Flutter Cursor Overlay (DOM-based, bypasses CollaborationCursor) ────
+  // ── Flutter Cursor Overlay ────
   useEffect(() => {
     if (!editor || !provider) return;
 
@@ -489,7 +473,7 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
 
       awareness.getStates().forEach((state: any) => {
         if (!state?.user || state.cursorIndex === undefined) return;
-        if (state.anchor !== null || state.head !== null) return; // skip native Yjs cursors
+        if (state.anchor !== null || state.head !== null) return;
 
         const index = state.cursorIndex as number;
         const userName = state.user.name as string;
@@ -508,7 +492,6 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
           const y = coords.top - overlayRect.top;
           const height = coords.bottom - coords.top;
 
-          // Cursor line
           const cursorEl = document.createElement('div');
           cursorEl.style.cssText = `
           position:absolute;
@@ -520,7 +503,6 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
           pointer-events:none;
         `;
 
-          // Name label
           const labelEl = document.createElement('div');
           labelEl.textContent = userName;
           labelEl.style.cssText = `
@@ -540,16 +522,12 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
 
           overlay.appendChild(cursorEl);
           overlay.appendChild(labelEl);
-        } catch (e) {
-          // Position out of bounds — skip silently
-        }
+        } catch (e) {}
       });
     };
 
     const handleAwarenessChange = () => renderFlutterCursors();
     awareness.on('change', handleAwarenessChange);
-
-    // Also re-render on editor updates (document changes shift cursor positions)
     editor.on('update', renderFlutterCursors);
 
     return () => {
@@ -573,6 +551,44 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
   return (
     <div className="continuous-editor-wrapper">
       <div className="continuous-editor-canvas">
+        {editor && (
+          <BubbleMenu className="bubble-menu" tippyOptions={{ duration: 100 }} editor={editor}>
+            <button
+              onClick={() => editor.chain().focus().toggleBold().run()}
+              className={editor.isActive('bold') ? 'is-active' : ''}
+            >
+              <Bold size={14} />
+            </button>
+            <button
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+              className={editor.isActive('italic') ? 'is-active' : ''}
+            >
+              <Italic size={14} />
+            </button>
+            <button
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+              className={editor.isActive('underline') ? 'is-active' : ''}
+            >
+              <UnderlineIcon size={14} />
+            </button>
+            <button
+              onClick={() => {
+                const url = window.prompt('URL');
+                if (url) editor.chain().focus().setLink({ href: url }).run();
+              }}
+              className={editor.isActive('link') ? 'is-active' : ''}
+            >
+              <LinkIcon size={14} />
+            </button>
+            <button
+              onClick={() => editor.chain().focus().toggleHighlight().run()}
+              className={editor.isActive('highlight') ? 'is-active' : ''}
+            >
+              <Highlighter size={14} />
+            </button>
+          </BubbleMenu>
+        )}
+
         <textarea
           className="editor-title-input"
           placeholder="Untitled Document"

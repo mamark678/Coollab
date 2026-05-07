@@ -17,12 +17,14 @@ import {
   Eye,
   FileText,
   GitBranch,
+  History,
   Home,
   Layers,
   Link2,
   Loader2,
   Maximize2,
   Menu,
+  MessageSquare,
   Search,
   Sliders,
   Sparkles,
@@ -296,6 +298,14 @@ export function App() {
       setCurrentDocType(type)
     }
   }, [setCurrentNoteId, setActiveDocTitle, setSidebarSelectionId, setCurrentDocType])
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const [isInitializingWorkspace, setIsInitializingWorkspace] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
@@ -907,6 +917,146 @@ export function App() {
     )
   }
 
+  // ── Mobile Layout Render ──────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div className="mobile-app-layout">
+        {/* Mobile Header */}
+        <header className="mobile-header">
+          <div className="mobile-header__left">
+            <h1 className="mobile-header__title">{activeDocTitle || 'Coollab'}</h1>
+            {onlineCollaborators.length > 0 && (
+              <div className="mobile-header__presence">
+                <Target size={12} />
+                <span>{onlineCollaborators.length} active</span>
+              </div>
+            )}
+          </div>
+          <div className="mobile-header__actions">
+            <button className="mobile-header__btn" onClick={() => setShowComments(!showComments)}>
+              <MessageSquare size={18} />
+            </button>
+            <button className="mobile-header__btn" onClick={() => setShowShareDialog(true)}>
+              <Link2 size={18} />
+            </button>
+            <button className="mobile-header__btn" onClick={() => setShowSearchModal(true)}>
+              <Search size={18} />
+            </button>
+          </div>
+        </header>
+
+        {/* Main Editor Area */}
+        <main className="mobile-content">
+          <div className="mobile-editor-container">
+            {currentNoteId ? (
+              <CollaborativeEditor
+                key={currentNoteId}
+                roomName={currentNoteId}
+                projectId={currentProjectId}
+                username={username}
+                userId={user?.uid}
+                color={color}
+                title={activeDocTitle}
+                onTitleChange={handleUpdateTitle}
+                onContentUpdate={stableOnContentUpdate}
+                onEditorReady={handleEditorReady}
+                readOnly={viewerMode}
+              />
+            ) : (
+              <div className="mobile-empty-state">
+                <FileText size={48} opacity={0.2} />
+                <p>Select a document to begin</p>
+              </div>
+            )}
+          </div>
+
+          {/* Contextual Side Panels (as overlays on mobile) */}
+          <AnimatePresence>
+            {showComments && (
+              <motion.div 
+                initial={{ y: '100%' }} 
+                animate={{ y: 0 }} 
+                exit={{ y: '100%' }}
+                className="mobile-panel-overlay"
+              >
+                <div className="mobile-panel-header">
+                  <h3>Comments</h3>
+                  <button onClick={() => setShowComments(false)}><X size={20} /></button>
+                </div>
+                <div className="mobile-panel-content">
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <CommentsPanel 
+                      editor={editor} 
+                      username={username} 
+                      userColor={color} 
+                    />
+                  </Suspense>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+
+        {/* Floating Formatting Toolbar (Keyboard Reachable) */}
+        {editor && (
+          <div className="mobile-toolbar-fixed">
+            <EditorToolbar
+              editor={editor}
+              onToggleWordCount={() => setShowWordCount((v) => !v)}
+              showWordCount={showWordCount}
+            />
+          </div>
+        )}
+
+        {/* Bottom Navigation Bar */}
+        <nav className="mobile-bottom-nav">
+          <button className="mobile-nav-btn" onClick={() => handleNavigateToDoc('')}>
+            <Home size={20} />
+            <span>Home</span>
+          </button>
+          <button className="mobile-nav-btn mobile-nav-btn--active">
+            <FileText size={20} />
+            <span>Editor</span>
+          </button>
+          <button 
+            className={`mobile-nav-btn ${showActivities ? 'mobile-nav-btn--active' : ''}`} 
+            onClick={() => {
+              closeAllRightPanels();
+              setShowActivities(true);
+            }}
+          >
+            <Layers size={20} />
+            <span>Activities</span>
+          </button>
+          <button 
+            className={`mobile-nav-btn ${showLeaderboard ? 'mobile-nav-btn--active' : ''}`}
+            onClick={() => {
+              closeAllRightPanels();
+              setShowLeaderboard(true);
+            }}
+          >
+            <Trophy size={20} />
+            <span>Rank</span>
+          </button>
+          <button className="mobile-nav-btn" onClick={() => setShowProperties(true)}>
+            <Sliders size={20} />
+            <span>Settings</span>
+          </button>
+        </nav>
+
+        {/* Overlays */}
+        <Suspense fallback={null}>
+          <SearchModal 
+            isOpen={showSearchModal} 
+            onClose={() => setShowSearchModal(false)} 
+            onNavigateToDoc={handleNavigateToDoc} 
+            projectId={currentProjectId || ''}
+          />
+          <ShareDialog isOpen={showShareDialog} onClose={() => setShowShareDialog(false)} projectId={currentProjectId || ''} projectTitle={activeDocTitle} />
+        </Suspense>
+      </div>
+    )
+  }
 
   // ── Determine right panel ──────────────────────────────────────────────
   const renderRightPanel = (): React.ReactNode => {
@@ -1391,26 +1541,10 @@ export function App() {
                       setShowBacklinks(false)
                     }
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 16px',
-                    height: 32,
-                    background: showHistory ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-                    border: showHistory ? '1px solid #6dd49e' : '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: 8,
-                    color: showHistory ? '#6dd49e' : '#e8eaf0',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
                   title="Version History"
                   type="button"
                 >
+                  <History size={14} />
                   History
                 </button>
                 <button
@@ -1424,26 +1558,10 @@ export function App() {
                       setShowBacklinks(false)
                     }
                   }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 16px',
-                    height: 32,
-                    background: showComments ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-                    border: showComments ? '1px solid #7c3aed' : '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: 8,
-                    color: showComments ? '#7c3aed' : '#e8eaf0',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
-                  }}
                   title="Toggle Comments Panel"
                   type="button"
                 >
+                  <MessageSquare size={14} />
                   Comment
                 </button>
                 <button
@@ -1456,23 +1574,6 @@ export function App() {
                       setShowOutline(false)
                       setShowBacklinks(false)
                     }
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '0 16px',
-                    height: 32,
-                    background: showProperties ? 'rgba(255, 255, 255, 0.05)' : 'transparent',
-                    border: showProperties ? '1px solid #7c6bf0' : '1px solid rgba(255, 255, 255, 0.15)',
-                    borderRadius: 8,
-                    color: showProperties ? '#7c6bf0' : '#e8eaf0',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0
                   }}
                   title="Toggle Properties Panel"
                   type="button"

@@ -32,7 +32,10 @@ import {
   Highlighter,
   ChevronDown,
   ChevronUp,
-  FilePlus,
+  Layout,
+  Plus,
+  Eye,
+  Type,
 } from 'lucide-react'
 import './EditorToolbar.css'
 
@@ -58,6 +61,7 @@ interface ToolbarButtonProps {
   isDisabled?: boolean
   onClick: () => void
   id: string
+  showLabel?: boolean
 }
 
 // ─── Preset colors for highlight ─────────────────────────────────────────────
@@ -88,26 +92,97 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
   isDisabled = false,
   onClick,
   id,
+  showLabel = false,
 }) => {
   const tooltipText = shortcut ? `${label} (${shortcut})` : label
 
   return (
     <button
       id={id}
-      className={`toolbar-btn ${isActive ? 'toolbar-btn--active' : ''}`}
+      className={`toolbar-btn ${isActive ? 'toolbar-btn--active' : ''} ${showLabel ? 'toolbar-btn--with-label' : ''}`}
       onClick={onClick}
       disabled={isDisabled}
-      title={tooltipText}
+      title={showLabel ? '' : tooltipText}
       aria-label={tooltipText}
       type="button"
     >
       {icon}
+      {showLabel && <span className="toolbar-btn__text">{label}</span>}
     </button>
   )
 }
 
-// Memoize — only re-renders when isActive, isDisabled, or label changes
 const MemoToolbarButton = memo(ToolbarButton)
+
+// ─── Generic Dropdown Component ──────────────────────────────────────────────
+
+interface DropdownItem {
+  id: string
+  label: string
+  icon: React.ReactNode
+  isActive?: boolean
+  isDisabled?: boolean
+  onClick: () => void
+  shortcut?: string
+}
+
+const GenericDropdown: React.FC<{
+  label: string
+  icon: React.ReactNode
+  items: DropdownItem[]
+  id: string
+}> = ({ label, icon, items, id }) => {
+  const [isOpen, setIsOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent): void => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="toolbar-dropdown" ref={ref}>
+      <button
+        id={id}
+        className={`toolbar-dropdown__trigger ${isOpen ? 'toolbar-dropdown__trigger--active' : ''}`}
+        onClick={() => setIsOpen(!isOpen)}
+        title={label}
+        type="button"
+      >
+        {icon}
+        <span className="toolbar-dropdown__label">{label}</span>
+        <ChevronDown size={12} className={`dropdown-chevron ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="toolbar-dropdown__menu">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              className={`toolbar-dropdown__item ${item.isActive ? 'toolbar-dropdown__item--active' : ''}`}
+              onClick={() => {
+                item.onClick()
+                setIsOpen(false)
+              }}
+              disabled={item.isDisabled}
+              type="button"
+            >
+              <div className="toolbar-dropdown__item-content">
+                {item.icon}
+                <span className="toolbar-dropdown__item-label">{item.label}</span>
+                {item.shortcut && <span className="toolbar-dropdown__item-shortcut">{item.shortcut}</span>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 // ─── Font Size Input ─────────────────────────────────────────────────────────
 
@@ -193,7 +268,6 @@ const PaperSizeDropdown: React.FC<{
 
   const activeSize = PAPER_SIZES.find((s) => s.value === currentSize) || PAPER_SIZES[0]
 
-  // Calculate fixed position when opening
   const toggleOpen = (): void => {
     if (!isOpen && triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect()
@@ -321,8 +395,6 @@ const TextColorPicker: React.FC<{ editor: Editor }> = ({ editor }) => {
   )
 }
 
-// ─── Highlight Color Picker ──────────────────────────────────────────────────
-
 const HighlightColorPicker: React.FC<{ editor: Editor }> = ({ editor }) => {
   const [isOpen, setIsOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -406,15 +478,215 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
   const toggleSpellCheck = (): void => {
     const newVal = !spellCheck
     setSpellCheck(newVal)
-    // Target both old continuous editor and new paged editors
     document.querySelectorAll('.collab-editor-content, .coollab-page-editor').forEach((el) => {
       el.setAttribute('spellcheck', String(newVal))
     })
   }
 
+  // ── Dropdown Item Groups ──────────────────────────────────────────────────
+
+  const layoutItems: DropdownItem[] = [
+    {
+      id: 'align-left',
+      label: 'Align Left',
+      icon: <AlignLeft size={16} />,
+      isActive: editor.isActive({ textAlign: 'left' }),
+      onClick: () => editor.chain().focus().setTextAlign('left').run(),
+    },
+    {
+      id: 'align-center',
+      label: 'Align Center',
+      icon: <AlignCenter size={16} />,
+      isActive: editor.isActive({ textAlign: 'center' }),
+      onClick: () => editor.chain().focus().setTextAlign('center').run(),
+    },
+    {
+      id: 'align-right',
+      label: 'Align Right',
+      icon: <AlignRight size={16} />,
+      isActive: editor.isActive({ textAlign: 'right' }),
+      onClick: () => editor.chain().focus().setTextAlign('right').run(),
+    },
+    {
+      id: 'align-justify',
+      label: 'Justify',
+      icon: <AlignJustify size={16} />,
+      isActive: editor.isActive({ textAlign: 'justify' }),
+      onClick: () => editor.chain().focus().setTextAlign('justify').run(),
+    },
+  ]
+
+  const listItems: DropdownItem[] = [
+    {
+      id: 'bullet-list',
+      label: 'Bullet List',
+      icon: <List size={16} />,
+      shortcut: 'Ctrl+Shift+8',
+      isActive: editor.isActive('bulletList'),
+      onClick: () => editor.chain().focus().toggleBulletList().run(),
+    },
+    {
+      id: 'ordered-list',
+      label: 'Numbered List',
+      icon: <ListOrdered size={16} />,
+      shortcut: 'Ctrl+Shift+9',
+      isActive: editor.isActive('orderedList'),
+      onClick: () => editor.chain().focus().toggleOrderedList().run(),
+    },
+    {
+      id: 'task-list',
+      label: 'Task List',
+      icon: <ListChecks size={16} />,
+      isActive: editor.isActive('taskList'),
+      onClick: () => editor.chain().focus().toggleTaskList().run(),
+    },
+    {
+      id: 'indent',
+      label: 'Indent',
+      icon: <Indent size={16} />,
+      shortcut: 'Tab',
+      onClick: () => editor.chain().focus().sinkListItem('listItem').run(),
+      isDisabled: !editor.can().sinkListItem('listItem'),
+    },
+    {
+      id: 'outdent',
+      label: 'Outdent',
+      icon: <Outdent size={16} />,
+      shortcut: 'Shift+Tab',
+      onClick: () => editor.chain().focus().liftListItem('listItem').run(),
+      isDisabled: !editor.can().liftListItem('listItem'),
+    },
+  ]
+
+  const insertItems: DropdownItem[] = [
+    {
+      id: 'insert-table',
+      label: 'Table',
+      icon: <Table size={16} />,
+      onClick: () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
+    },
+    {
+      id: 'insert-image',
+      label: 'Image',
+      icon: <Image size={16} />,
+      onClick: () => {
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = 'image/*'
+        input.onchange = () => {
+          const file = input.files?.[0]
+          if (!file) return
+          const reader = new FileReader()
+          reader.onload = () => {
+            const result = reader.result
+            if (typeof result === 'string') {
+              editor.chain().focus().setImage({ src: result }).run()
+            }
+          }
+          reader.readAsDataURL(file)
+        }
+        input.click()
+      },
+    },
+    {
+      id: 'insert-link',
+      label: 'Link',
+      icon: <Link size={16} />,
+      shortcut: 'Ctrl+K',
+      isActive: editor.isActive('link'),
+      onClick: () => {
+        if (editor.isActive('link')) {
+          editor.chain().focus().unsetLink().run()
+          return
+        }
+        const url = window.prompt('Enter URL:')
+        if (url) {
+          editor.chain().focus().setLink({ href: url, target: '_blank' }).run()
+        }
+      },
+    },
+    {
+      id: 'insert-hr',
+      label: 'Horizontal Rule',
+      icon: <Minus size={16} />,
+      onClick: () => editor.chain().focus().setHorizontalRule().run(),
+    },
+    {
+      id: 'insert-blockquote',
+      label: 'Blockquote',
+      icon: <Quote size={16} />,
+      isActive: editor.isActive('blockquote'),
+      onClick: () => editor.chain().focus().toggleBlockquote().run(),
+    },
+    {
+      id: 'insert-code-block',
+      label: 'Code Block',
+      icon: <Code2 size={16} />,
+      isActive: editor.isActive('codeBlock'),
+      onClick: () => editor.chain().focus().toggleCodeBlock().run(),
+    },
+  ]
+
+  const viewItems: DropdownItem[] = [
+    {
+      id: 'spellcheck',
+      label: 'Spell Check',
+      icon: <SpellCheck size={16} />,
+      isActive: spellCheck,
+      onClick: toggleSpellCheck,
+    },
+    {
+      id: 'word-count',
+      label: 'Word Count',
+      icon: <Hash size={16} />,
+      isActive: showWordCount,
+      onClick: () => onToggleWordCount?.(),
+    },
+    {
+      id: 'outline',
+      label: 'Outline',
+      icon: <FileText size={16} />,
+      isActive: showOutline,
+      onClick: () => onToggleOutline?.(),
+    },
+    {
+      id: 'distraction-free',
+      label: 'Fullscreen Focus',
+      icon: <Maximize size={16} />,
+      shortcut: 'Ctrl+Shift+F',
+      isActive: isDistractionFree,
+      onClick: () => onToggleDistractionFree?.(),
+    },
+  ]
+
+  const styleItems: DropdownItem[] = [
+    {
+        id: 'strikethrough',
+        label: 'Strikethrough',
+        icon: <Strikethrough size={16} />,
+        shortcut: 'Ctrl+Shift+X',
+        isActive: editor.isActive('strike'),
+        onClick: () => editor.chain().focus().toggleStrike().run(),
+      },
+      {
+        id: 'subscript',
+        label: 'Subscript',
+        icon: <Subscript size={16} />,
+        isActive: editor.isActive('subscript'),
+        onClick: () => editor.chain().focus().toggleSubscript().run(),
+      },
+      {
+        id: 'superscript',
+        label: 'Superscript',
+        icon: <Superscript size={16} />,
+        isActive: editor.isActive('superscript'),
+        onClick: () => editor.chain().focus().toggleSuperscript().run(),
+      },
+  ]
+
   return (
     <div className="editor-toolbar" id="editor-toolbar">
-      {/* Group 1 — History */}
+      {/* Group 1 — History (High priority, stay visible) */}
       <div className="toolbar-group">
         <MemoToolbarButton
           id="toolbar-undo"
@@ -435,13 +707,15 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
       </div>
 
       <div className="toolbar-divider" />
+
+      {/* Group 2 — Font Settings */}
       <div className="toolbar-group">
         <FontSizeInput editor={editor} />
       </div>
 
       <div className="toolbar-divider" />
 
-      {/* Group 3 — Text Style */}
+      {/* Group 3 — Primary Styling (Visible) */}
       <div className="toolbar-group">
         <MemoToolbarButton
           id="toolbar-bold"
@@ -467,27 +741,11 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
           isActive={editor.isActive('underline')}
           onClick={() => editor.chain().focus().toggleUnderline().run()}
         />
-        <MemoToolbarButton
-          id="toolbar-strikethrough"
-          icon={<Strikethrough size={16} />}
-          label="Strikethrough"
-          shortcut="Ctrl+Shift+X"
-          isActive={editor.isActive('strike')}
-          onClick={() => editor.chain().focus().toggleStrike().run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-subscript"
-          icon={<Subscript size={16} />}
-          label="Subscript"
-          isActive={editor.isActive('subscript')}
-          onClick={() => editor.chain().focus().toggleSubscript().run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-superscript"
-          icon={<Superscript size={16} />}
-          label="Superscript"
-          isActive={editor.isActive('superscript')}
-          onClick={() => editor.chain().focus().toggleSuperscript().run()}
+        <GenericDropdown
+            id="toolbar-more-styles"
+            label="Styles"
+            icon={<Type size={16} />}
+            items={styleItems}
         />
       </div>
 
@@ -501,195 +759,37 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
 
       <div className="toolbar-divider" />
 
-      {/* Group 5 — Alignment */}
+      {/* Group 5 — Grouped Dropdowns (HCI simplification) */}
       <div className="toolbar-group">
-        <MemoToolbarButton
-          id="toolbar-align-left"
-          icon={<AlignLeft size={16} />}
-          label="Align Left"
-          isActive={editor.isActive({ textAlign: 'left' })}
-          onClick={() => editor.chain().focus().setTextAlign('left').run()}
+        <GenericDropdown
+          id="toolbar-layout"
+          label="Layout"
+          icon={<Layout size={16} />}
+          items={layoutItems}
         />
-        <MemoToolbarButton
-          id="toolbar-align-center"
-          icon={<AlignCenter size={16} />}
-          label="Align Center"
-          isActive={editor.isActive({ textAlign: 'center' })}
-          onClick={() => editor.chain().focus().setTextAlign('center').run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-align-right"
-          icon={<AlignRight size={16} />}
-          label="Align Right"
-          isActive={editor.isActive({ textAlign: 'right' })}
-          onClick={() => editor.chain().focus().setTextAlign('right').run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-align-justify"
-          icon={<AlignJustify size={16} />}
-          label="Justify"
-          isActive={editor.isActive({ textAlign: 'justify' })}
-          onClick={() => editor.chain().focus().setTextAlign('justify').run()}
-        />
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* Group 6 — Lists */}
-      <div className="toolbar-group">
-        <MemoToolbarButton
-          id="toolbar-bullet-list"
+        <GenericDropdown
+          id="toolbar-lists"
+          label="Lists"
           icon={<List size={16} />}
-          label="Bullet List"
-          shortcut="Ctrl+Shift+8"
-          isActive={editor.isActive('bulletList')}
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
+          items={listItems}
         />
-        <MemoToolbarButton
-          id="toolbar-ordered-list"
-          icon={<ListOrdered size={16} />}
-          label="Numbered List"
-          shortcut="Ctrl+Shift+9"
-          isActive={editor.isActive('orderedList')}
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-task-list"
-          icon={<ListChecks size={16} />}
-          label="Task List"
-          isActive={editor.isActive('taskList')}
-          onClick={() => editor.chain().focus().toggleTaskList().run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-indent"
-          icon={<Indent size={16} />}
-          label="Indent"
-          shortcut="Tab"
-          onClick={() => editor.chain().focus().sinkListItem('listItem').run()}
-          isDisabled={!editor.can().sinkListItem('listItem')}
-        />
-        <MemoToolbarButton
-          id="toolbar-outdent"
-          icon={<Outdent size={16} />}
-          label="Outdent"
-          shortcut="Shift+Tab"
-          onClick={() => editor.chain().focus().liftListItem('listItem').run()}
-          isDisabled={!editor.can().liftListItem('listItem')}
+        <GenericDropdown
+          id="toolbar-insert"
+          label="Insert"
+          icon={<Plus size={16} />}
+          items={insertItems}
         />
       </div>
 
       <div className="toolbar-divider" />
 
-      {/* Group 7 — Insert */}
+      {/* Group 6 — View Settings */}
       <div className="toolbar-group">
-        <MemoToolbarButton
-          id="toolbar-insert-table"
-          icon={<Table size={16} />}
-          label="Insert Table"
-          onClick={() =>
-            editor
-              .chain()
-              .focus()
-              .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
-              .run()
-          }
-        />
-        <MemoToolbarButton
-          id="toolbar-insert-image"
-          icon={<Image size={16} />}
-          label="Insert Image"
-          onClick={() => {
-            const input = document.createElement('input')
-            input.type = 'file'
-            input.accept = 'image/*'
-            input.onchange = () => {
-              const file = input.files?.[0]
-              if (!file) return
-              const reader = new FileReader()
-              reader.onload = () => {
-                const result = reader.result
-                if (typeof result === 'string') {
-                  // NOTE: Base64 storage is for prototype phase only.
-                  // In production, replace with S3/Firebase Storage upload.
-                  editor.chain().focus().setImage({ src: result }).run()
-                }
-              }
-              reader.readAsDataURL(file)
-            }
-            input.click()
-          }}
-        />
-        <MemoToolbarButton
-          id="toolbar-insert-hr"
-          icon={<Minus size={16} />}
-          label="Horizontal Rule"
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-insert-blockquote"
-          icon={<Quote size={16} />}
-          label="Blockquote"
-          isActive={editor.isActive('blockquote')}
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-insert-code-block"
-          icon={<Code2 size={16} />}
-          label="Code Block"
-          isActive={editor.isActive('codeBlock')}
-          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-        />
-        <MemoToolbarButton
-          id="toolbar-insert-link"
-          icon={<Link size={16} />}
-          label="Insert Link"
-          shortcut="Ctrl+K"
-          isActive={editor.isActive('link')}
-          onClick={() => {
-            if (editor.isActive('link')) {
-              editor.chain().focus().unsetLink().run()
-              return
-            }
-            const url = window.prompt('Enter URL:')
-            if (url) {
-              editor.chain().focus().setLink({ href: url, target: '_blank' }).run()
-            }
-          }}
-        />
-      </div>
-
-      <div className="toolbar-divider" />
-
-      {/* Group 8 — View */}
-      <div className="toolbar-group">
-        <MemoToolbarButton
-          id="toolbar-spellcheck"
-          icon={<SpellCheck size={16} />}
-          label="Toggle Spell Check"
-          isActive={spellCheck}
-          onClick={toggleSpellCheck}
-        />
-        <MemoToolbarButton
-          id="toolbar-word-count"
-          icon={<Hash size={16} />}
-          label="Word Count Panel"
-          isActive={showWordCount}
-          onClick={() => onToggleWordCount?.()}
-        />
-        <MemoToolbarButton
-          id="toolbar-outline"
-          icon={<FileText size={16} />}
-          label="Document Outline"
-          isActive={showOutline}
-          onClick={() => onToggleOutline?.()}
-        />
-        <MemoToolbarButton
-          id="toolbar-distraction-free"
-          icon={<Maximize size={16} />}
-          label="Distraction-Free Mode"
-          shortcut="Ctrl+Shift+F"
-          isActive={isDistractionFree}
-          onClick={() => onToggleDistractionFree?.()}
+        <GenericDropdown
+            id="toolbar-view"
+            label="View"
+            icon={<Eye size={16} />}
+            items={viewItems}
         />
       </div>
     </div>
