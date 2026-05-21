@@ -36,7 +36,10 @@ import {
   Plus,
   Eye,
   Type,
+  MoreHorizontal
 } from 'lucide-react'
+import { Keyboard } from '@capacitor/keyboard'
+import { useIsMobile } from '../../hooks/useIsMobile'
 import './EditorToolbar.css'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -49,6 +52,8 @@ interface EditorToolbarProps {
   showWordCount?: boolean
   showOutline?: boolean
   isDistractionFree?: boolean
+  isSynced?: boolean;
+  collaboratorCount?: number;
   paperSize?: 'a4' | 'letter' | 'legal'
   onPaperSizeChange?: (size: 'a4' | 'letter' | 'legal') => void
 }
@@ -466,10 +471,32 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
   showWordCount = false,
   showOutline = false,
   isDistractionFree = false,
-  paperSize = 'a4',
+  paperSize = 'letter',
   onPaperSizeChange,
+  isSynced = true,
+  collaboratorCount = 0
 }) => {
+  const isMobile = useIsMobile();
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [showMobileMore, setShowMobileMore] = useState(false);
   const [spellCheck, setSpellCheck] = useState(true)
+
+  useEffect(() => {
+    if (!isMobile) return;
+
+    const showListener = Keyboard.addListener('keyboardWillShow', () => {
+      setIsKeyboardVisible(true);
+    });
+    const hideListener = Keyboard.addListener('keyboardWillHide', () => {
+      setIsKeyboardVisible(false);
+      setShowMobileMore(false);
+    });
+
+    return () => {
+      showListener.then(l => l.remove());
+      hideListener.then(l => l.remove());
+    };
+  }, [isMobile]);
 
   if (!editor) {
     return <div className="editor-toolbar editor-toolbar--empty" />
@@ -684,6 +711,8 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
       },
   ]
 
+
+
   return (
     <div className="editor-toolbar" id="editor-toolbar">
       {/* Group 1 — History (High priority, stay visible) */}
@@ -791,6 +820,20 @@ export const EditorToolbarInner: React.FC<EditorToolbarProps> = ({
             icon={<Eye size={16} />}
             items={viewItems}
         />
+      </div>
+      
+      {/* Group 7 — Sync & Collaborators */}
+      <div className="toolbar-divider" />
+      <div className="toolbar-group" style={{ marginLeft: 'auto', gap: '12px', paddingRight: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: isSynced ? '#6dd49e' : '#e6c96e' }}>
+          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: isSynced ? '#6dd49e' : '#e6c96e' }} />
+          {isSynced ? 'Synced ✓' : 'Saving...'}
+        </div>
+        {collaboratorCount > 0 && (
+          <div style={{ fontSize: '12px', color: 'var(--theme-text-secondary)', borderLeft: '1px  solid var(--theme-border)', paddingLeft: '12px' }}>
+            {collaboratorCount} {collaboratorCount === 1 ? 'other collaborator' : 'other collaborators'}
+          </div>
+        )}
       </div>
     </div>
   )

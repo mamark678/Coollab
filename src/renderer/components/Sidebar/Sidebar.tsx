@@ -10,11 +10,16 @@ import {
   FolderOpen,
   FolderPlus,
   Home,
+  Layers,
   LayoutGrid,
   LogOut,
   PanelLeftClose,
   PanelLeftOpen,
-  Settings
+  Search,
+  Settings,
+  Sliders,
+  Trophy,
+  X
 } from 'lucide-react';
 import React, { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import logo from '../../assets/logo.png';
@@ -37,6 +42,13 @@ interface SidebarProps {
   viewingStudentId?: string | null;
   isMobileOpen?: boolean;
   onCloseMobile?: () => void;
+  onNavigateHome?: () => void;
+  onToggleActivities?: () => void;
+  onToggleLeaderboard?: () => void;
+  onSearch?: () => void;
+  onSettings?: () => void;
+  showActivities?: boolean;
+  showLeaderboard?: boolean;
 }
 
 type SortOrder = 'manual' | 'updated' | 'alpha-asc' | 'alpha-desc';
@@ -53,7 +65,14 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
   projectMembers = [],
   viewingStudentId = null,
   isMobileOpen = false,
-  onCloseMobile
+  onCloseMobile,
+  onNavigateHome,
+  onToggleActivities,
+  onToggleLeaderboard,
+  onSearch,
+  onSettings,
+  showActivities = false,
+  showLeaderboard = false
 }) => {
   const { currentNoteId, setCurrentNoteId, setActiveDocTitle, currentProjectId, setCurrentProjectId, setSidebarSelectionId, currentDocType, setCurrentDocType } = useAppStore();
   const { state: { user } } = useAuth();
@@ -382,6 +401,23 @@ export const Sidebar: React.FC<SidebarProps> = React.memo(({
         activityType === 'individual' && !isAdmin ? currentProjectId || undefined : undefined,
         activityType === 'individual' && !isAdmin ? user?.uid : undefined
       );
+      if (currentNoteId === editingDocId) {
+        const yjsService = YjsService.getInstance();
+        console.log('[Rename] currentNoteId:', currentNoteId, '| editingDocId:', editingDocId);
+        console.log('[Rename] yjsService.isInitialized():', yjsService.isInitialized());
+        if (yjsService.isInitialized()) {
+          const yjsDoc = yjsService.getDoc();
+          const sharedTitle = yjsDoc.getText('title');
+          console.log('[Rename] current sharedTitle:', sharedTitle.toString());
+          yjsDoc.transact(() => {
+            sharedTitle.delete(0, sharedTitle.length);
+            if (trimmedTitle) sharedTitle.insert(0, trimmedTitle);
+          }, 'title-sync');
+          console.log('[Rename] sharedTitle after update:', sharedTitle.toString());
+        }
+      } else {
+        console.log('[Rename] SKIPPED - currentNoteId:', currentNoteId, '!== editingDocId:', editingDocId);
+      }
       startTransition(() => {
         setAllDocs(prev => prev.map(d => d.id === editingDocId ? { ...d, title: trimmedTitle } : d));
         if (currentNoteId === editingDocId) setActiveDocTitle(trimmedTitle);
@@ -662,9 +698,9 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
         {!doc.isFolder && (
           <>
             {doc.type === 'canvas' ? (
-              <LayoutGrid size={16} className="sidebar__doc-icon" style={{ color: '#7c3aed' }} />
+              <LayoutGrid size={16} className="sidebar__doc-icon" style={{ color: 'var(--theme-primary)' }} />
             ) : doc.type === 'base' ? (
-              <Database size={16} className="sidebar__doc-icon" style={{ color: '#0ea5e9' }} />
+              <Database size={16} className="sidebar__doc-icon" style={{ color: 'var(--theme-secondary)' }} />
             ) : (
               <FileText size={16} className="sidebar__doc-icon" />
             )}
@@ -765,16 +801,58 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
   }, [allDocs, expandedFolders, currentNoteId, sortOrder, handleOpenDoc, editingDocId, editingDocTitle, commitRename, dropIndicator, handleDragStart, handleDragEnd, handleDragEnter, handleDragLeave, handleDragOver, handleDrop, startRenaming]);
 
 
+  const isEffectivelyCollapsed = collapsed && !isMobileOpen;
+
   return (
     <>
       <div className={`sidebar-overlay ${isMobileOpen ? 'mobile-open' : ''}`} onClick={onCloseMobile} />
-      <div className={`sidebar ${collapsed ? 'sidebar--collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
+      <div className={`sidebar ${isEffectivelyCollapsed ? 'sidebar--collapsed' : ''} ${isMobileOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar__brand">
           <img src={logo} alt="Coollab Logo" className="sidebar__logo" />
-          {!collapsed && <span className="sidebar__brand-name">Coollab</span>}
+          {!isEffectivelyCollapsed && <span className="sidebar__brand-name">Coollab</span>}
+          
+          {isMobileOpen && (
+            <button 
+              className="sidebar__mobile-close" 
+              onClick={onCloseMobile}
+              style={{
+                marginLeft: 'auto',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
+
+        {/* Mobile Navigation Links */}
+        {isMobileOpen && (
+          <div className="sidebar__mobile-nav">
+            <button 
+              className={`sidebar__nav-item ${!currentProjectId ? 'sidebar__nav-item--active' : ''}`}
+              onClick={() => { onNavigateHome?.(); onCloseMobile?.(); }}
+            >
+              <Home size={18} />
+              <span>Dashboard</span>
+            </button>
+            <div className="sidebar__nav-divider" />
+            <button className="sidebar__nav-item" onClick={() => { onSearch?.(); onCloseMobile?.(); }}>
+              <Search size={18} />
+              <span>Search</span>
+            </button>
+            <button className="sidebar__nav-item" onClick={() => { onSettings?.(); onCloseMobile?.(); }}>
+              <Sliders size={18} />
+              <span>Settings</span>
+            </button>
+          </div>
+        )}
+
         <div className="sidebar__explorer-header">
-          {!collapsed && (
+          {!isEffectivelyCollapsed && (
             <div className="sidebar__explorer-actions">
               {currentProjectId && (
                 <>
@@ -798,7 +876,7 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
                   {/* Activity Settings — only for admin in activity projects, and only when not viewing student */}
                   {isAdmin && projectType === 'activity' && !viewingStudentId && (
                     <button className="sidebar__action-btn" onClick={() => setShowActivitySettings(true)} title="Activity Project Settings">
-                      <Settings size={16} color="#7c6bf0" />
+                      <Settings size={16} color="var(--theme-primary)" />
                     </button>
                   )}
                   {/* Sort and Expand — always available unless in admin dashboard mode */}
@@ -816,13 +894,15 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
               )}
             </div>
           )}
-          <button onClick={onToggleCollapse} className="sidebar__toggle"
-            title={collapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}>
-            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-          </button>
+          {!isMobileOpen && (
+            <button onClick={onToggleCollapse} className="sidebar__toggle"
+              title={isEffectivelyCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}>
+              {isEffectivelyCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            </button>
+          )}
         </div>
 
-        {!collapsed && (
+        {!isEffectivelyCollapsed && (
           <div
             className={`sidebar__documents file-tree ${dropIndicator?.id === 'root' ? 'sidebar__documents--drop-target' : ''}`}
             onDragEnter={e => handleDragEnter(e, 'root')}
@@ -846,9 +926,9 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
             )}
 
             {viewingStudentId && (
-              <div style={{ padding: '8px 12px', background: 'rgba(124, 107, 240, 0.1)', borderRadius: '6px', margin: '8px', border: '1px solid rgba(124, 107, 240, 0.2)' }}>
-                <div style={{ fontSize: '11px', color: '#9485f5', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Viewing Student</div>
-                <div style={{ fontSize: '13px', color: '#fff', fontWeight: 500 }}>{projectMembers.find(m => m.uid === viewingStudentId)?.name || 'Unknown'}</div>
+              <div style={{ padding: '8px 12px', background: 'color-mix(in srgb, var(--theme-primary) 10%, transparent)', borderRadius: '6px', margin: '8px', border: '1px solid color-mix(in srgb, var(--theme-primary) 20%, transparent)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--theme-primary)', fontWeight: 600, textTransform: 'uppercase', marginBottom: '2px' }}>Viewing Student</div>
+                <div style={{ fontSize: '13px', color: 'var(--theme-text-primary)', fontWeight: 500 }}>{projectMembers.find(m => m.uid === viewingStudentId)?.name || 'Unknown'}</div>
               </div>
             )}
 
@@ -871,8 +951,8 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
                   onBlur={() => newFolderName.trim() ? handleCreateNewFolder() : setIsCreatingFolder(false)}
                   style={{
                     width: '100%', padding: '4px 8px', borderRadius: '4px',
-                    background: '#0d0d1a', border: '1px solid #1e1e3f',
-                    color: '#fff', fontSize: '13px', outline: 'none'
+                    background: 'var(--theme-background)', border: '1px solid var(--theme-border)',
+                    color: 'var(--theme-text-primary)', fontSize: '13px', outline: 'none'
                   }}
                 />
               </div>
@@ -897,8 +977,8 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
                   onBlur={() => newFileName.trim() ? handleCreateNewFile() : setIsCreatingFile(false)}
                   style={{
                     width: '100%', padding: '4px 8px', borderRadius: '4px',
-                    background: '#0d0d1a', border: '1px solid #1e1e3f',
-                    color: '#fff', fontSize: '13px', outline: 'none'
+                    background: 'var(--theme-background)', border: '1px solid var(--theme-border)',
+                    color: 'var(--theme-text-primary)', fontSize: '13px', outline: 'none'
                   }}
                 />
               </div>
@@ -960,7 +1040,7 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
             onMouseDown={e => e.stopPropagation()}
             style={{
               position: 'fixed', top: contextMenu.y, left: contextMenu.x,
-              background: '#0a0a14', border: '1px solid #1e1e3f', borderRadius: '6px',
+              background: 'var(--theme-surface)', border: '1px solid var(--theme-border)', borderRadius: '6px',
               padding: '4px', zIndex: 10000, display: 'flex', flexDirection: 'column',
               minWidth: '130px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)'
             }}
@@ -969,9 +1049,9 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
               onClick={e => { e.stopPropagation(); startRenaming(contextMenu.doc!); }}
               style={{
                 padding: '8px 12px', textAlign: 'left', background: 'transparent',
-                border: 'none', color: '#e2e8f0', cursor: 'pointer', borderRadius: '4px', fontSize: '13px'
+                border: 'none', color: 'var(--theme-text-primary)', cursor: 'pointer', borderRadius: '4px', fontSize: '13px'
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#1e1e3f'}
+              onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--theme-text-primary) 8%, transparent)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >Rename</button>
             {contextMenu.doc?.ownerId === user?.uid && (
@@ -979,9 +1059,9 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
                 onClick={e => { e.stopPropagation(); handleDeleteDoc(contextMenu.doc!); }}
                 style={{
                   padding: '8px 12px', textAlign: 'left', background: 'transparent',
-                  border: 'none', color: '#ff4d4f', cursor: 'pointer', borderRadius: '4px', fontSize: '13px'
+                  border: 'none', color: 'var(--theme-error)', cursor: 'pointer', borderRadius: '4px', fontSize: '13px'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = '#1e1e3f'}
+                onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--theme-error) 10%, transparent)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >Delete</button>
             )}
@@ -994,7 +1074,7 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
             onMouseDown={e => e.stopPropagation()}
             style={{
               position: 'fixed', top: memberContextMenu.y, left: memberContextMenu.x,
-              background: '#0a0a14', border: '1px solid #1e1e3f', borderRadius: '6px',
+              background: 'var(--theme-surface)', border: '1px solid var(--theme-border)', borderRadius: '6px',
               padding: '4px', zIndex: 10001, display: 'flex', flexDirection: 'column',
               minWidth: '160px', boxShadow: '0 8px 16px rgba(0,0,0,0.5)'
             }}
@@ -1003,10 +1083,10 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
               onClick={e => { e.stopPropagation(); handleMemberKick(memberContextMenu.memberUid); }}
               style={{
                 padding: '8px 12px', textAlign: 'left', background: 'transparent',
-                border: 'none', color: '#ff4d4f', cursor: 'pointer', borderRadius: '4px', fontSize: '13px',
+                border: 'none', color: 'var(--theme-error)', cursor: 'pointer', borderRadius: '4px', fontSize: '13px',
                 fontWeight: 500
               }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 77, 79, 0.1)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'color-mix(in srgb, var(--theme-error) 10%, transparent)'}
               onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
             >Remove from Project</button>
           </div>
@@ -1036,31 +1116,31 @@ const SidebarItem: React.FC<SidebarItemProps> = React.memo(({
           </div>
         )}
 
-        {/* Settings Modal */}
-        <SettingsModal
-          isOpen={showSettingsModal}
-          onClose={() => setShowSettingsModal(false)}
-        />
-
-        {/* Activity Project Settings Modal */}
-        {currentProjectId && (
-          <ActivityProjectSettings
-            isOpen={showActivitySettings}
-            onClose={() => setShowActivitySettings(false)}
-            projectId={currentProjectId}
-          />
-        )}
-
-        {deleteError && (
-          <div style={{
-            position: 'absolute', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-            background: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '4px',
-            zIndex: 1000, fontSize: '13px', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
-          }}>
-            {deleteError}
-          </div>
-        )}
       </div>
+
+      {/* Modals - Moved outside of the .sidebar div to avoid being constrained by its transform/width */}
+      <SettingsModal
+        isOpen={showSettingsModal}
+        onClose={() => setShowSettingsModal(false)}
+      />
+
+      {currentProjectId && (
+        <ActivityProjectSettings
+          isOpen={showActivitySettings}
+          onClose={() => setShowActivitySettings(false)}
+          projectId={currentProjectId}
+        />
+      )}
+
+      {deleteError && (
+        <div style={{
+          position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--theme-error)', color: 'white', padding: '8px 16px', borderRadius: '4px',
+          zIndex: 1000, fontSize: '13px', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+        }}>
+          {deleteError}
+        </div>
+      )}
     </>
   );
 });

@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState, startTransition } from 'react';
-import { Plus, FolderPlus, Folder, Link2, Settings, LogOut, FileText, LayoutGrid, Zap, Search, HelpCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useState, startTransition, useRef, useMemo } from 'react';
+import { Plus, FolderPlus, Link2, Settings, LogOut, LayoutGrid, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { PaperCard } from './PaperCard';
@@ -12,6 +12,7 @@ import { getUserAvatar } from '../../utils/avatar.utils';
 import { cleanPreviewText } from '../../utils/project.utils';
 import { YjsService } from '../../services/yjs';
 import { useNotifications } from '../../context/NotificationContext';
+import { useBackground } from '../../context/BackgroundContext';
 import './DocumentDashboard.css';
 
 interface DocumentDashboardProps {
@@ -27,11 +28,14 @@ interface ProjectExtras {
   docCount: number;
 }
 
+
 export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectProject }) => {
   const { state: { user } } = useAuth();
   const { addNotification } = useNotifications();
+  const { dashboardBackground } = useBackground();
 
   const [projects, setProjects] = useState<DocumentSchema[]>([]);
+  const [orderedProjects, setOrderedProjects] = useState<DocumentSchema[]>([]);
   const [activeThisWeek, setActiveThisWeek] = useState(0);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
@@ -45,12 +49,60 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
   const [isJoining, setIsJoining] = useState(false);
   const [joinLink, setJoinLink] = useState('');
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const saveOrderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Drag state
+  const [dragSrcIdx, setDragSrcIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   
   // Extra states for project cards
   const [projectExtras, setProjectExtras] = useState<Record<string, ProjectExtras>>({});
   
   const navigate = useNavigate();
   const { profile } = useUserProfile(user?.uid);
+
+  // ── Keep orderedProjects in sync with projects + saved order ────────────
+  useEffect(() => {
+    if (projects.length === 0) return;
+
+    // Try to restore saved order from localStorage first
+    const storageKey = user?.uid ? `project-order-${user.uid}` : null;
+    const savedOrder: string[] = storageKey
+      ? JSON.parse(localStorage.getItem(storageKey) || '[]')
+      : [];
+
+    if (savedOrder.length > 0) {
+      const orderMap = new Map(savedOrder.map((id, i) => [id, i]));
+      const sorted = [...projects].sort((a, b) => {
+        const ai = orderMap.has(a.id) ? orderMap.get(a.id)! : projects.length;
+        const bi = orderMap.has(b.id) ? orderMap.get(b.id)! : projects.length;
+        return ai - bi;
+      });
+      setOrderedProjects(sorted);
+    } else {
+      setOrderedProjects(projects);
+    }
+  }, [projects, user?.uid]);
+
+  // ── Persist new order on drag end ────────────────────────────────────────
+  const handleReorder = useCallback((newOrder: DocumentSchema[]) => {
+    setOrderedProjects(newOrder);
+
+    const ids = newOrder.map(p => p.id);
+    const storageKey = user?.uid ? `project-order-${user.uid}` : null;
+    if (storageKey) {
+      localStorage.setItem(storageKey, JSON.stringify(ids));
+    }
+
+    // Debounce Firestore save
+    if (saveOrderTimerRef.current) clearTimeout(saveOrderTimerRef.current);
+    saveOrderTimerRef.current = setTimeout(() => {
+      if (user?.uid) {
+        FirebaseService.getInstance().saveUserProfile(user.uid, { projectOrder: ids }).catch(err =>
+          console.warn('[Dashboard] Failed to persist project order:', err)
+        );
+      }
+    }, 1500);
+  }, [user?.uid]);
 
   const displayName = user?.displayName || user?.email?.split('@')[0] || 'Guest';
   const userInitials = displayName.substring(0, 2).toUpperCase();
@@ -251,6 +303,7 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
     try {
       await FirebaseService.getInstance().deleteNote(projectId);
       setProjects((prev: DocumentSchema[]) => prev.filter((d: DocumentSchema) => d.id !== projectId));
+      setOrderedProjects((prev: DocumentSchema[]) => prev.filter((d: DocumentSchema) => d.id !== projectId));
       // Global fix for focus bug on Windows: force reload after delete
       window.location.reload();
     } catch (err) {
@@ -259,8 +312,8 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
     }
   }, [projects, user?.uid]);
 
-  // Filtered projects
-  const filteredProjects = projects.filter((proj: DocumentSchema) => {
+  // Filtered projects — sourced from orderedProjects to respect drag order
+  const filteredProjects = orderedProjects.filter((proj: DocumentSchema) => {
     if (activeTab === 'mine') return proj.ownerId === user?.uid;
     if (activeTab === 'recent') {
       const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
@@ -268,6 +321,53 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
     }
     return true;
   });
+
+  // Live-preview reordered list while dragging
+  const displayProjects = useMemo(() => {
+    if (dragSrcIdx === null || dragOverIdx === null || dragSrcIdx === dragOverIdx) {
+      return filteredProjects;
+    }
+    const result = [...filteredProjects];
+    const [moved] = result.splice(dragSrcIdx, 1);
+    result.splice(dragOverIdx, 0, moved);
+    return result;
+  }, [filteredProjects, dragSrcIdx, dragOverIdx]);
+
+  // Drag handlers
+  const handleDragStart = useCallback((idx: number) => {
+    setDragSrcIdx(idx);
+    setDragOverIdx(idx);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverIdx(idx);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    if (dragSrcIdx === null) return;
+
+    // Compute new full order: take the filteredProjects reordering and apply it back to orderedProjects
+    const reordered = [...filteredProjects];
+    const [moved] = reordered.splice(dragSrcIdx, 1);
+    reordered.splice(idx, 0, moved);
+
+    // Build new full ordered list (merge filtered reorder back with non-filtered)
+    const filteredIds = new Set(filteredProjects.map(p => p.id));
+    const nonFiltered = orderedProjects.filter(p => !filteredIds.has(p.id));
+    const newOrder = [...reordered, ...nonFiltered];
+
+    handleReorder(newOrder);
+    setDragSrcIdx(null);
+    setDragOverIdx(null);
+  }, [dragSrcIdx, filteredProjects, orderedProjects, handleReorder]);
+
+  const handleDragEnd = useCallback(() => {
+    setDragSrcIdx(null);
+    setDragOverIdx(null);
+  }, []);
 
   const totalProjectsCount = projects.length;
   const myProjectsCount = projects.filter((d: DocumentSchema) => d.ownerId === user?.uid).length;
@@ -281,7 +381,16 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
   };
 
   return (
-    <div className="dashboard" id="document-dashboard">
+    <div 
+      className="dashboard" 
+      id="document-dashboard"
+      style={{
+        backgroundImage: dashboardBackground ? `url(${dashboardBackground})` : 'none',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
       <div className="dashboard__inner">
         {/* Header */}
         <div className="dashboard__header">
@@ -296,7 +405,7 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
           
           <div className="dashboard__user-section">
             <div className="dashboard__user-profile">
-              <div className="dashboard__avatar">
+              <div className={`dashboard__avatar dashboard__avatar--${profile?.role || 'collaborator'}`}>
                 {getUserAvatar({ ...profile, providerData: user?.providerData, photoURL: user?.photoURL }) ? (
                   <img 
                     src={getUserAvatar({ ...profile, providerData: user?.providerData, photoURL: user?.photoURL })!} 
@@ -305,7 +414,27 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
                   />
                 ) : userInitials}
               </div>
-              <span className="dashboard__user-name">{displayName}</span>
+              <div className="dashboard__user-meta">
+                <span className="dashboard__user-name">{displayName}</span>
+                {profile?.role === 'instructor' && (
+                  <span className="dashboard__role-badge dashboard__role-badge--instructor">
+                    <span className="dashboard__role-badge-dot"></span>
+                    🎓 Instructor
+                  </span>
+                )}
+                {profile?.role === 'student' && (
+                  <span className="dashboard__role-badge dashboard__role-badge--student">
+                    <span className="dashboard__role-badge-dot"></span>
+                    📖 Student
+                  </span>
+                )}
+                {!profile?.role && (
+                  <span className="dashboard__role-badge dashboard__role-badge--collaborator">
+                    <span className="dashboard__role-badge-dot"></span>
+                    👤 Collaborator
+                  </span>
+                )}
+              </div>
             </div>
             
             <div className="dashboard__nav-actions">
@@ -443,10 +572,9 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
         </div>
 
         {/* Project Grid */}
-        <div className="dashboard__grid">
-          {loading ? (
-            // Skeleton state
-            Array.from({ length: 6 }).map((_, i) => (
+        {loading ? (
+          <div className="dashboard__grid">
+            {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="paper-card skeleton" style={{ minHeight: '180px' }}>
                 <div className="paper-card__body">
                   <div className="skeleton-text" style={{ width: '60%', height: '24px' }} />
@@ -454,14 +582,16 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
                   <div className="skeleton-text" style={{ width: '85%', height: '14px' }} />
                 </div>
                 <div className="paper-card__footer" style={{ marginTop: 'auto' }}>
-                   <div style={{ display: 'flex', gap: '4px' }}>
-                     <div className="skeleton-circle" style={{ width: '24px', height: '24px' }} />
-                     <div className="skeleton-circle" style={{ width: '24px', height: '24px' }} />
-                   </div>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <div className="skeleton-circle" style={{ width: '24px', height: '24px' }} />
+                    <div className="skeleton-circle" style={{ width: '24px', height: '24px' }} />
+                  </div>
                 </div>
               </div>
-            ))
-          ) : filteredProjects.length === 0 ? (
+            ))}
+          </div>
+        ) : filteredProjects.length === 0 ? (
+          <div className="dashboard__grid">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -487,20 +617,65 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
                 </button>
               </div>
             </motion.div>
-          ) : (
-            <AnimatePresence mode="popLayout">
-              {filteredProjects.map((proj: DocumentSchema, index: number) => (
+          </div>
+        ) : (
+          <div className="dashboard__grid">
+            {displayProjects.map((proj: DocumentSchema, index: number) => {
+              const isDragging = dragSrcIdx !== null && proj.id === filteredProjects[dragSrcIdx]?.id;
+              const isDragOver = index === dragOverIdx && dragSrcIdx !== null;
+              
+              return (
                 <motion.div
                   key={proj.id}
-                  initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
                   layout
+                  transition={{
+                    type: 'spring',
+                    stiffness: 350,
+                    damping: 28,
+                    mass: 0.8
+                  }}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragEnd={handleDragEnd}
+                  style={{
+                    cursor: 'grab',
+                    opacity: isDragging ? 0.3 : 1,
+                    transform: isDragOver ? 'scale(1.02)' : 'scale(1)',
+                    position: 'relative',
+                  }}
+                  className={`dashboard__draggable-wrapper ${isDragging ? 'is-dragging' : ''} ${isDragOver ? 'is-drag-over' : ''}`}
                 >
+                  {/* Subtle drag cue icon on hover */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      zIndex: 10,
+                      pointerEvents: 'none',
+                      opacity: 0.3,
+                      transition: 'opacity 0.2s',
+                    }}
+                    className="drag-cue"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="9" cy="12" r="1"></circle>
+                      <circle cx="9" cy="5" r="1"></circle>
+                      <circle cx="9" cy="19" r="1"></circle>
+                      <circle cx="15" cy="12" r="1"></circle>
+                      <circle cx="15" cy="5" r="1"></circle>
+                      <circle cx="15" cy="19" r="1"></circle>
+                    </svg>
+                  </div>
                   <PaperCard
                     doc={proj}
-                    onClick={() => onSelectProject(proj.id, proj.title || 'Untitled Project')}
+                    onClick={() => {
+                      if (dragSrcIdx === null) {
+                        onSelectProject(proj.id, proj.title || 'Untitled Project');
+                      }
+                    }}
                     onDelete={proj.ownerId === user?.uid ? () => handleDeleteProject(proj.id) : undefined}
                     previewText={projectExtras[proj.id]?.preview}
                     previewLoading={projectExtras[proj.id]?.loading}
@@ -508,10 +683,10 @@ export const DocumentDashboard: React.FC<DocumentDashboardProps> = ({ onSelectPr
                     docCount={projectExtras[proj.id]?.docCount}
                   />
                 </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Logout Confirmation Dialog */}

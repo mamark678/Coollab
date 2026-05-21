@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
     base: './',
+    envDir: resolve(__dirname, '.'),
     plugins: [react()],
     root: 'src/renderer',
     build: {
@@ -30,6 +31,7 @@ export default defineConfig({
         }
     },
     resolve: {
+        dedupe: ['react', 'react-dom'],
         alias: {
             '@': resolve(__dirname, 'src/renderer'),
         },

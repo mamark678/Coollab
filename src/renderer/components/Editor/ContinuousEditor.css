@@ -2,9 +2,11 @@
 
 .continuous-editor-wrapper {
   flex: 1;
+  width: 100%;
+  min-width: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  background: var(--surface-base, #1a1a2e);
+  background: var(--theme-background);
   scroll-behavior: smooth;
   /* GPU compositing layer for smoother scrolling on mobile */
   transform: translateZ(0);
@@ -22,16 +24,17 @@
 }
 
 .continuous-editor-wrapper::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--theme-text-primary) 8%, transparent);
   border-radius: 4px;
 }
 
 .continuous-editor-wrapper::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--theme-text-primary) 15%, transparent);
 }
 
 /* The writing canvas — centered, readable width */
 .continuous-editor-canvas {
+  width: 100%;
   max-width: 740px;
   margin: 0 auto;
   padding: 48px 32px 200px;
@@ -43,6 +46,7 @@
   .continuous-editor-canvas {
     padding: 24px 16px 120px;
     width: 100%;
+    max-width: 100%;
   }
 }
 
@@ -53,8 +57,8 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.75;
-  color: var(--text-primary, #e8eaf0);
-  caret-color: var(--accent-primary, #7c3aed);
+  color: var(--theme-text-primary);
+  caret-color: var(--theme-primary);
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -70,10 +74,10 @@
   font-weight: 700;
   margin-top: 2rem;
   margin-bottom: 1rem;
-  color: var(--text-primary, #e8eaf0);
+  color: var(--theme-text-primary);
   line-height: 1.3;
   letter-spacing: -0.01em;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid var(--theme-border);
   padding-bottom: 0.5rem;
 }
 
@@ -82,7 +86,7 @@
   font-weight: 600;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
-  color: var(--text-primary, #e8eaf0);
+  color: var(--theme-text-primary);
   line-height: 1.35;
 }
 
@@ -91,7 +95,7 @@
   font-weight: 600;
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--theme-text-secondary);
 }
 
 .coollab-continuous-editor h4 {
@@ -99,16 +103,16 @@
   font-weight: 600;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--theme-text-secondary);
 }
 
 /* ── Links ─────────────────────────────────────────────────────────────── */
 
 .coollab-continuous-editor a,
 .coollab-continuous-editor .editor-link {
-  color: #7c6bf0;
+  color: var(--theme-primary);
   text-decoration: underline;
-  text-decoration-color: rgba(124, 107, 240, 0.35);
+  text-decoration-color: color-mix(in srgb, var(--theme-primary) 35%, transparent);
   text-underline-offset: 2px;
   cursor: pointer;
   transition: opacity 0.12s, color 0.12s;
@@ -116,15 +120,15 @@
 
 .coollab-continuous-editor a:hover,
 .coollab-continuous-editor .editor-link:hover {
-  text-decoration-color: #7c6bf0;
-  color: #a78bfa;
+  text-decoration-color: var(--theme-primary);
+  color: var(--theme-secondary);
 }
 
 /* ── Code ──────────────────────────────────────────────────────────────── */
 
 .coollab-continuous-editor pre {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
   border-radius: 8px;
   padding: 16px;
   margin: 12px 0;
@@ -137,23 +141,23 @@
 .coollab-continuous-editor pre code {
   background: none;
   padding: 0;
-  color: var(--text-primary, #e8eaf0);
+  color: var(--theme-text-primary);
 }
 
 .coollab-continuous-editor code {
-  background: rgba(255, 255, 255, 0.06);
+  background: color-mix(in srgb, var(--theme-text-primary) 6%, transparent);
   padding: 2px 6px;
   border-radius: 4px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.9em;
-  color: #f0a0a0;
+  color: var(--theme-secondary);
 }
 
 /* ── Horizontal Rule ───────────────────────────────────────────────────── */
 
 .coollab-continuous-editor hr {
   border: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--theme-border);
   margin: 32px 0;
 }
 
@@ -170,7 +174,7 @@
 }
 
 .coollab-continuous-editor li::marker {
-  color: var(--accent-primary, #7c3aed);
+  color: var(--theme-primary);
 }
 
 /* ── Task Lists ────────────────────────────────────────────────────────── */
@@ -190,7 +194,7 @@
   appearance: none;
   width: 18px;
   height: 18px;
-  border: 2px solid var(--text-faint, #4a4d5e);
+  border: 2px solid var(--theme-border);
   border-radius: 5px;
   cursor: pointer;
   flex-shrink: 0;
@@ -201,8 +205,8 @@
 }
 
 .coollab-continuous-editor ul[data-type="taskList"] li input[type="checkbox"]:checked {
-  background: var(--accent-primary, #7c3aed);
-  border-color: var(--accent-primary, #7c3aed);
+  background: var(--theme-primary);
+  border-color: var(--theme-primary);
 }
 
 .coollab-continuous-editor ul[data-type="taskList"] li input[type="checkbox"]:checked::after {
@@ -219,10 +223,10 @@
 /* ── Blockquote ────────────────────────────────────────────────────────── */
 
 .coollab-continuous-editor blockquote {
-  border-left: 3px solid var(--accent-primary, #7c3aed);
+  border-left: 3px solid var(--theme-primary);
   padding-left: 16px;
   margin: 12px 0;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--theme-text-secondary);
   font-style: italic;
 }
 
@@ -236,14 +240,14 @@
 
 .coollab-continuous-editor th,
 .coollab-continuous-editor td {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--theme-border);
   padding: 8px 12px;
   min-width: 80px;
   vertical-align: top;
 }
 
 .coollab-continuous-editor th {
-  background: rgba(255, 255, 255, 0.04);
+  background: color-mix(in srgb, var(--theme-text-primary) 4%, transparent);
   font-weight: 600;
   text-align: left;
 }
@@ -266,7 +270,7 @@
 .coollab-continuous-editor p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: var(--text-faint, #4a4d5e);
+  color: var(--theme-text-secondary);
   pointer-events: none;
   height: 0;
 }
@@ -274,7 +278,7 @@
 /* ── Selection ─────────────────────────────────────────────────────────── */
 
 .coollab-continuous-editor .ProseMirror-selectednode {
-  outline: 2px solid var(--accent-primary, #7c3aed);
+  outline: 2px solid var(--theme-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -342,7 +346,7 @@
 
 .comment-card--focused {
   animation: comment-pulse 1.5s ease-in-out;
-  border-color: #7c6bf0 !important;
-  background-color: rgba(124, 107, 240, 0.05) !important;
+  border-color: var(--theme-primary) !important;
+  background-color: color-mix(in srgb, var(--theme-primary) 5%, transparent) !important;
   z-index: 10;
 }

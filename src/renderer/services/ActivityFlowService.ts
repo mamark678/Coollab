@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore';
 import { Activity } from './activity';
 import { FirebaseService } from './firebase';
+import { useAppStore } from '../store/useAppStore';
 
 export class ActivityFlowService {
   private currentActivity: Activity | null = null;
@@ -26,6 +27,10 @@ export class ActivityFlowService {
 
     window.addEventListener('complete-current-activity', () => {
       this.completeActivity();
+    });
+
+    window.addEventListener('activity-progress-reset', () => {
+      this.updateCurrentActivity();
     });
   }
 
@@ -53,6 +58,8 @@ export class ActivityFlowService {
 
     if (this.activities.length === 0) {
       this.currentActivity = null;
+      useAppStore.getState().setCurrentActivity(null);
+      useAppStore.getState().setCurrentActivityStatus(null);
       this.stopTimer();
       window.dispatchEvent(new CustomEvent('current-activity-changed', { detail: null }));
       return;
@@ -75,6 +82,8 @@ export class ActivityFlowService {
     if (!firstIncomplete) {
       // All done
       this.currentActivity = null;
+      useAppStore.getState().setCurrentActivity(null);
+      useAppStore.getState().setCurrentActivityStatus(null);
       this.stopTimer();
       window.dispatchEvent(new CustomEvent('current-activity-changed', { detail: null }));
       return;
@@ -96,15 +105,21 @@ export class ActivityFlowService {
 
       // Still active
       this.currentActivity = firstIncomplete;
+      useAppStore.getState().setCurrentActivity(firstIncomplete);
+      useAppStore.getState().setCurrentActivityStatus(status);
       if (status === 'pending') {
         this.stopTimer();
+        // Dispatch silently unless it is a workspace activity which we show initially
+        const silent = firstIncomplete.type !== 'workspace';
+        window.dispatchEvent(new CustomEvent('current-activity-changed', {
+          detail: { activity: firstIncomplete, status, startedAt, silent }
+        }));
       } else if (status === 'in_progress' && startedAt) {
         this.startTimer(firstIncomplete, startedAt);
+        window.dispatchEvent(new CustomEvent('current-activity-changed', {
+          detail: { activity: firstIncomplete, status, startedAt, silent: false }
+        }));
       }
-
-      window.dispatchEvent(new CustomEvent('current-activity-changed', {
-        detail: { activity: firstIncomplete, status, startedAt }
-      }));
     });
   }
 
@@ -222,6 +237,8 @@ export class ActivityFlowService {
     if (this.unsubscribeActivities) this.unsubscribeActivities();
     if (this.unsubscribeCompletions) this.unsubscribeCompletions();
     this.currentActivity = null;
+    useAppStore.getState().setCurrentActivity(null);
+    useAppStore.getState().setCurrentActivityStatus(null);
     this.activities = [];
   }
 }

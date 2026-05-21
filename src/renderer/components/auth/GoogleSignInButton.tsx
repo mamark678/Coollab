@@ -18,8 +18,8 @@ export const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
       disabled={disabled}
       className="w-full flex items-center justify-center gap-3 rounded-[10px] py-[11px] px-4 font-medium text-[13.5px] transition-all duration-200 outline-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       style={{
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        background: `color-mix(in srgb, var(--theme-text-primary) ${0.04 * 100}%, transparent)`,
+        border: '1px  solid var(--theme-border)',
         color: '#e8eaf0',
       }}
       onMouseEnter={(e) => {

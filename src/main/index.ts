@@ -342,11 +342,12 @@ if (!gotTheLock) {
           ...details.responseHeaders,
           'Content-Security-Policy': [
             "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googleapis.com https://accounts.google.com; " +
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.googleapis.com https://accounts.google.com https://cdn.jsdelivr.net; " +
+            "worker-src 'self' blob:; " +
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
             "font-src 'self' https://fonts.gstatic.com; " +
-            "img-src 'self' data: https://*.googleusercontent.com https://*.googleapis.com; " +
-            "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://api.groq.com wss://y-webrtc-cw7h.onrender.com wss://y-webrtc.fly.dev; " +
+            "img-src 'self' data: blob: https://*.googleusercontent.com https://*.googleapis.com; " +
+            "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://api.groq.com wss://signaling.yjs.dev wss://y-webrtc-cw7h.onrender.com wss://y-webrtc.fly.dev wss://y-webrtc-signaling-eu.herokuapp.com wss://y-webrtc-signaling-us.herokuapp.com ws://localhost:* wss://localhost:*; " +
             "frame-src https://accounts.google.com;"
           ]
         }

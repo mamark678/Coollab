@@ -8,7 +8,7 @@ import './SearchModal.css';
 interface SearchModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onNavigateToDoc: (docId: string, title?: string) => void;
+  onNavigateToDoc: (docId: string, title?: string, type?: 'document' | 'canvas' | 'base' | 'folder' | null) => void;
   projectId: string | null;
 }
 
@@ -19,6 +19,7 @@ interface SearchResult {
   docId: string;
   title: string;
   type: string;
+  docType?: 'document' | 'canvas' | 'base' | 'folder' | null;
   snippet: string;
   folderName: string;
   updatedAt: number;
@@ -140,7 +141,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, onNav
               snippet: matchTitle ? 'Matches title' : highlightSnippet(content, term),
               folderName: getFolderName(doc.parentId),
               updatedAt: doc.updatedAt || 0,
-              icon: <FileText size={14} />
+              icon: <FileText size={14} />,
+              docType: 'document'
             });
           }
         }
@@ -162,7 +164,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, onNav
               snippet: 'Matches title',
               folderName: getFolderName(doc.parentId),
               updatedAt: doc.updatedAt || 0,
-              icon: <LayoutDashboard size={14} />
+              icon: <LayoutDashboard size={14} />,
+              docType: 'canvas'
             });
           }
         }
@@ -183,7 +186,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, onNav
               snippet: 'Matches title',
               folderName: getFolderName(doc.parentId),
               updatedAt: doc.updatedAt || 0,
-              icon: <Database size={14} />
+              icon: <Database size={14} />,
+              docType: 'base'
             });
           }
         }
@@ -241,7 +245,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, onNav
               snippet: highlightSnippet(c.content, term),
               folderName: getFolderName(doc.parentId),
               updatedAt: c.createdAt || 0,
-              icon: <MessageSquare size={14} />
+              icon: <MessageSquare size={14} />,
+              docType: (doc.type as any) || 'document'
             });
           }
         }
@@ -262,7 +267,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, onNav
     } else if (e.key === 'Enter' && results[selectedIndex]) {
       e.preventDefault();
       const item = results[selectedIndex];
-      onNavigateToDoc(item.docId, item.title);
+      onNavigateToDoc(item.docId, item.title, item.docType);
       onClose();
     } else if (e.key === 'Escape') {
       onClose();
@@ -316,7 +321,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({ isOpen, onClose, onNav
               key={result.id + index}
               className={`search-result-item ${index === selectedIndex ? 'selected' : ''}`}
               onClick={() => {
-                onNavigateToDoc(result.docId, result.title);
+                onNavigateToDoc(result.docId, result.title, result.docType);
                 onClose();
               }}
               onMouseEnter={() => setSelectedIndex(index)}

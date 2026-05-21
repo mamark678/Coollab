@@ -214,11 +214,11 @@ export function useGraphData(
       const count = linkCounts.get(doc.id) || 0;
       const tags = extractTags(doc.searchText || '');
       
-      let nodeColor = '#4a5568';
+      let nodeColor = 'default';
       if (count === 0) {
-        nodeColor = '#2d3748'; // Dimmer for orphan nodes
+        nodeColor = 'orphan'; // Dimmer for orphan nodes
       } else if (tags.length > 0) {
-        nodeColor = '#6dd49e';
+        nodeColor = 'tagged';
       }
 
       nodeList.push({
@@ -253,14 +253,13 @@ export function useGraphData(
       return {
         ...node,
         isActive,
-        // Active node gets the purple accent; orphan dim; tags green; default grey
         color: isActive
-          ? '#7c3aed'
+          ? 'active'
           : node.linkCount === 0
-            ? '#2d3748'
+            ? 'orphan'
             : node.tags.length > 0
-              ? '#6dd49e'
-              : '#4a5568',
+              ? 'tagged'
+              : 'default',
       };
     });
   }, [baseGraph.nodes, activeDocId]);

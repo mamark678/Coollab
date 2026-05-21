@@ -5,13 +5,32 @@
   align-items: center;
   gap: 4px;
   padding: 0 16px;
-  background: #111122; /* Slightly darker for better separation */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--theme-background); /* Uses the main theme background */
+  border-bottom: 1px solid var(--theme-border);
   flex-shrink: 0;
   height: 48px; /* Increased height for better targets */
   position: relative;
   z-index: 100;
   backdrop-filter: blur(8px);
+}
+
+@media (max-width: 768px) {
+  .editor-toolbar {
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 8px;
+    gap: 2px;
+  }
+  
+  /* Hide scrollbar but keep functionality */
+  .editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+  .editor-toolbar {
+    scrollbar-width: none;
+  }
 }
 
 .editor-toolbar--empty {
@@ -29,7 +48,7 @@
 .toolbar-divider {
   width: 1px;
   height: 24px;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--theme-border);
   margin: 0 8px;
   flex-shrink: 0;
 }
@@ -45,7 +64,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #94a3b8;
+  color: var(--theme-text-secondary);
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -53,13 +72,13 @@
 }
 
 .toolbar-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
+  background: color-mix(in srgb, var(--theme-text-primary) 6%, transparent);
+  color: var(--theme-text-primary);
 }
 
 .toolbar-btn--active {
-  background: rgba(124, 107, 240, 0.15);
-  color: #a78bfa;
+  background: color-mix(in srgb, var(--theme-primary) 15%, transparent);
+  color: var(--theme-secondary);
 }
 
 .toolbar-btn--with-label {
@@ -93,7 +112,7 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: 8px;
-  color: #94a3b8;
+  color: var(--theme-text-secondary);
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
@@ -102,14 +121,14 @@
 }
 
 .toolbar-dropdown__trigger:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #f8fafc;
+  background: color-mix(in srgb, var(--theme-text-primary) 6%, transparent);
+  color: var(--theme-text-primary);
 }
 
 .toolbar-dropdown__trigger--active {
-  background: rgba(255, 255, 255, 0.04);
-  color: #f8fafc;
-  border-color: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--theme-text-primary) 4%, transparent);
+  color: var(--theme-text-primary);
+  border-color: var(--theme-border);
 }
 
 .dropdown-chevron {
@@ -126,8 +145,8 @@
   top: calc(100% + 8px);
   left: 0;
   min-width: 180px;
-  background: #1a1a2e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
   border-radius: 12px;
   padding: 6px;
   z-index: 1000;
@@ -147,20 +166,20 @@
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: #cbd5e1;
+  color: var(--theme-text-primary);
   cursor: pointer;
   transition: all 0.15s;
   text-align: left;
 }
 
 .toolbar-dropdown__item:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #ffffff;
+  background: color-mix(in srgb, var(--theme-text-primary) 8%, transparent);
+  color: var(--theme-text-primary);
 }
 
 .toolbar-dropdown__item--active {
-  background: rgba(124, 107, 240, 0.1);
-  color: #a78bfa !important;
+  background: color-mix(in srgb, var(--theme-primary) 10%, transparent);
+  color: var(--theme-secondary) !important;
 }
 
 .toolbar-dropdown__item-content {
@@ -177,10 +196,10 @@
 
 .toolbar-dropdown__item-shortcut {
   font-size: 10px;
-  color: #64748b;
+  color: var(--theme-text-secondary);
   font-weight: 600;
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--theme-text-primary) 5%, transparent);
   padding: 2px 5px;
   border-radius: 4px;
 }
@@ -190,8 +209,8 @@
 .toolbar-fontsize {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--theme-text-primary) 4%, transparent);
+  border: 1px solid var(--theme-border);
   border-radius: 8px;
   height: 34px;
   overflow: hidden;
@@ -201,7 +220,7 @@
   width: 32px;
   background: transparent;
   border: none;
-  color: #f1f5f9;
+  color: var(--theme-text-primary);
   font-size: 13px;
   font-weight: 600;
   text-align: center;
@@ -216,14 +235,14 @@
   justify-content: center;
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: var(--theme-text-secondary);
   cursor: pointer;
   transition: background 0.2s;
 }
 
 .toolbar-fontsize__btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f1f5f9;
+  background: color-mix(in srgb, var(--theme-text-primary) 8%, transparent);
+  color: var(--theme-text-primary);
 }
 
 /* ── Color Picker ──────────────────────────────────────────────────────── */
@@ -246,8 +265,8 @@
   top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  background: #1a1a2e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
   border-radius: 12px;
   padding: 12px;
   z-index: 1000;
@@ -258,7 +277,7 @@
 .toolbar-color-picker__label {
   display: block;
   font-size: 11px;
-  color: #64748b;
+  color: var(--theme-text-secondary);
   font-weight: 700;
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -290,14 +309,14 @@
 
 .toolbar-highlight-swatch:hover {
   transform: scale(1.1);
-  border-color: #7c6bf0;
+  border-color: var(--theme-primary);
 }
 
 .toolbar-highlight-swatch--none {
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--theme-text-primary) 5%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #64748b;
+  color: var(--theme-text-secondary);
   font-size: 10px;
 }

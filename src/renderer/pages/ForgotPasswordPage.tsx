@@ -74,7 +74,7 @@ export const ForgotPasswordPage: React.FC = () => {
           {!isSuccess && (
             <button 
               onClick={() => navigate('/login')} 
-              className="absolute -top-1 -left-2 p-2 text-[#6b6f82] hover:text-white transition-colors rounded-lg hover:bg-white/5"
+              className="absolute -top-1 -left-2 p-2 text-[var(--theme-text-secondary)] hover:text-[var(--theme-text-primary)] transition-colors rounded-lg hover:bg-[color-mix(in_srgb,var(--theme-text-primary)_5%,transparent)]"
             >
               <ArrowLeft size={20} />
             </button>
@@ -90,14 +90,14 @@ export const ForgotPasswordPage: React.FC = () => {
                 transition={{ duration: 0.3 }}
               >
                 <div className="flex justify-center mb-6 mt-4">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#7c6bf0]/20 to-[#4ea1f7]/20 border border-white/10 flex items-center justify-center">
-                    <KeyRound size={28} className="text-[#7c6bf0]" />
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[color-mix(in_srgb,var(--theme-primary)_20%,transparent)] to-[color-mix(in_srgb,var(--theme-secondary)_20%,transparent)] border border-[var(--theme-border)] flex items-center justify-center">
+                    <KeyRound size={28} className="text-[var(--theme-primary)]" />
                   </div>
                 </div>
 
                 <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold text-[#e8eaf0] tracking-tight">Forgot password?</h2>
-                  <p className="text-sm text-[#6b6f82] mt-2">No worries. Enter your email and we'll send you a reset link.</p>
+                  <h2 className="text-2xl font-bold text-[var(--theme-text-primary)] tracking-tight">Forgot password?</h2>
+                  <p className="text-sm text-[var(--theme-text-secondary)] mt-2">No worries. Enter your email and we'll send you a reset link.</p>
                 </div>
 
                 <ErrorBanner error={error} />
@@ -119,9 +119,9 @@ export const ForgotPasswordPage: React.FC = () => {
                   </AuthButton>
                 </form>
 
-                <p className="text-center text-sm text-[#6b6f82] mt-8">
+                <p className="text-center text-sm text-[var(--theme-text-secondary)] mt-8">
                   Remembered it?{' '}
-                  <Link to="/login" className="text-[#7c6bf0] font-medium hover:text-[#9485f5] transition-colors">
+                  <Link to="/login" className="text-[var(--theme-primary)] font-medium hover:text-[var(--theme-secondary)] transition-colors">
                     Back to Sign In
                   </Link>
                 </p>
@@ -134,27 +134,27 @@ export const ForgotPasswordPage: React.FC = () => {
                 transition={{ duration: 0.4, delay: 0.1 }}
                 className="flex flex-col items-center"
               >
-                <div className="w-20 h-20 mb-6 rounded-full bg-[#6dd49e]/15 border border-[#6dd49e]/25 flex items-center justify-center shadow-[0_0_30px_rgba(109,212,158,0.2)]">
-                  <MailCheck size={32} className="text-[#6dd49e]" />
+                <div className="w-20 h-20 mb-6 rounded-full bg-[color-mix(in_srgb,var(--theme-success)_15%,transparent)] border border-[color-mix(in_srgb,var(--theme-success)_25%,transparent)] flex items-center justify-center shadow-[0_0_30px_color-mix(in_srgb,var(--theme-success)_20%,transparent)]">
+                  <MailCheck size={32} className="text-[var(--theme-success)]" />
                 </div>
                 
-                <h2 className="text-2xl font-bold text-[#e8eaf0] tracking-tight mb-3">Check your inbox</h2>
-                <p className="text-center text-[#a0a4b8] text-sm leading-relaxed mb-8">
-                  We sent a password reset link to <span className="text-[#e8eaf0] font-medium">{email}</span>. It may take a minute to arrive.
+                <h2 className="text-2xl font-bold text-[var(--theme-text-primary)] tracking-tight mb-3">Check your inbox</h2>
+                <p className="text-center text-[var(--theme-text-secondary)] text-sm leading-relaxed mb-8">
+                  We sent a password reset link to <span className="text-[var(--theme-text-primary)] font-medium">{email}</span>. It may take a minute to arrive.
                 </p>
 
                 <div className="w-full space-y-4">
                   <button
                     onClick={handleResend}
                     disabled={cooldown > 0 || loading}
-                    className="w-full py-3 text-sm font-medium text-[#7c6bf0] hover:bg-white/5 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full py-3 text-sm font-medium text-[var(--theme-primary)] hover:bg-[color-mix(in_srgb,var(--theme-text-primary)_5%,transparent)] rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Didn't receive it? {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend'}
                   </button>
                   
                   <Link 
                     to="/login"
-                    className="flex w-full justify-center py-3 text-sm font-semibold text-white bg-white/10 hover:bg-white/15 border border-white/10 rounded-xl transition-all"
+                    className="flex w-full justify-center py-3 text-sm font-semibold text-[var(--theme-text-primary)] bg-[color-mix(in_srgb,var(--theme-text-primary)_10%,transparent)] hover:bg-[color-mix(in_srgb,var(--theme-text-primary)_15%,transparent)] border border-[var(--theme-border)] rounded-xl transition-all"
                   >
                     Back to login
                   </Link>

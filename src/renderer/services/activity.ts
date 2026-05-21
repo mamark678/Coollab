@@ -24,12 +24,16 @@ export interface ActivityCompletion {
   completedAt: number | null;
 }
 
+export type ActivityType = 'flashcard' | 'quiz' | 'gizmo' | 'base' | 'reading' | 'task' | 'discussion' | 'workspace';
+
 export interface Activity {
   id: string;
   title: string;
   description: string;
+  type: ActivityType;
   sequenceNumber: number;
   points: number;
+  estimatedTime?: string; // e.g. "5 min"
   timer_config?: {
     duration_seconds: number;
     grace_period_seconds: number;
@@ -39,6 +43,46 @@ export interface Activity {
   };
   instructions: string[];
   tags?: string[];
+  status?: string;
+  visibility?: string;
+  showAnswers?: boolean;
+  createdAt?: any;
+  // Type-specific data
+  quizData?: {
+    questions: {
+      question: string;
+      options: string[];
+      correctAnswer: number;
+      explanation: string;
+    }[];
+  };
+  gizmoData?: {
+    gizmoType: 'drag-drop' | 'timeline' | 'connect';
+    items: any[];
+  };
+  readingData?: {
+    passage: string;
+    questions: {
+      question: string;
+      options: string[];
+      correctAnswer: number;
+    }[];
+  };
+  taskData?: {
+    description: string;
+    subtasks: { id: string; text: string; completed: boolean }[];
+    successCriteria: string[];
+  };
+  discussionData?: {
+    prompt: string;
+    guidingQuestions: string[];
+  };
+  workspaceData?: {
+    document?: { enabled: boolean; prompt: string; minWords?: number };
+    database?: { enabled: boolean; fields: { name: string; type: string }[] };
+    graph?: { enabled: boolean; prompt: string; minNodes?: number; minConnections?: number };
+    canvas?: { enabled: boolean; prompt: string; requiredElements?: string[] };
+  };
 }
 
 export class ActivityService {
@@ -278,5 +322,29 @@ export class ActivityService {
     }));
 
     return { activities, studentData };
+  }
+
+  /**
+   * Lists all activities in a project with completion status for a specific student.
+   */
+  public async listActivitiesForStudent(projectId: string, userId: string): Promise<(Activity & { completion?: ActivityCompletion })[]> {
+    const db = FirebaseService.getInstance().db;
+    
+    // 1. Get all activities
+    const activitiesQ = query(collection(db, `notes/${projectId}/activities`), orderBy('sequenceNumber', 'asc'));
+    const activitiesSnap = await getDocs(activitiesQ);
+    const activities = activitiesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Activity));
+
+    // 2. Get completions
+    const results = await Promise.all(activities.map(async (activity) => {
+      const compRef = doc(db, `notes/${projectId}/activities/${activity.id}/completions/${userId}`);
+      const compSnap = await getDoc(compRef);
+      return {
+        ...activity,
+        completion: compSnap.exists() ? (compSnap.data() as ActivityCompletion) : undefined
+      };
+    }));
+
+    return results;
   }
 }

@@ -444,3 +444,76 @@ Please evaluate the student's work using the provided text content and workspace
     };
   }
 }
+/**
+ * Generate specific activity content using AI.
+ */
+export async function generateActivityContent(
+  type: string,
+  userPrompt: string,
+  statusCallback?: (msg: string) => void
+): Promise<any> {
+  const systemPrompt = `You are an expert educational content creator. Generate content for a "${type}" activity based on the user's prompt.
+  
+  Your response MUST be a single valid JSON object. In addition to the type-specific fields, you MUST include the following two top-level keys in the root of the JSON object:
+  - "activityTitle": "An engaging, professional title based on the topic (max 6-8 words)"
+  - "activityDescription": "A concise description (1-2 sentences) of what the student will learn or do"
+
+  Return ONLY valid JSON according to the following structures:
+
+  If type="quiz":
+  {
+    "activityTitle": "string",
+    "activityDescription": "string",
+    "questions": [
+      { "question": "string", "options": ["opt1", "opt2", "opt3", "opt4"], "correctAnswer": 0, "explanation": "string" }
+    ] // 5-10 questions
+  }
+
+  If type="reading":
+  {
+    "activityTitle": "string",
+    "activityDescription": "string",
+    "passage": "string",
+    "questions": [
+      { "question": "string", "options": ["opt1", "opt2", "opt3", "opt4"], "correctAnswer": 0 }
+    ]
+  }
+
+  If type="task":
+  {
+    "activityTitle": "string",
+    "activityDescription": "string",
+    "description": "string",
+    "subtasks": [ { "id": "string", "text": "string", "completed": false } ],
+    "successCriteria": ["string"]
+  }
+
+  If type="discussion":
+  {
+    "activityTitle": "string",
+    "activityDescription": "string",
+    "prompt": "string",
+    "guidingQuestions": ["string"]
+  }
+
+  If type="workspace":
+  {
+    "activityTitle": "string",
+    "activityDescription": "string",
+    "document": { "enabled": true, "prompt": "string", "minWords": 500 },
+    "database": { "enabled": true, "fields": [ { "name": "string", "type": "Text|Number|Date|Select" } ] },
+    "graph": { "enabled": true, "prompt": "string", "minNodes": 5, "minConnections": 3 },
+    "canvas": { "enabled": true, "prompt": "string", "requiredElements": ["Text Box", "Image"] }
+  }
+
+  Ensure high quality, educational content. Return ONLY the JSON object.`;
+
+  const result = await callGroq(systemPrompt, userPrompt, statusCallback);
+  
+  try {
+    return JSON.parse(result);
+  } catch (err) {
+    console.error('[GroqService] Failed to parse activity content:', result);
+    throw new Error('Failed to parse AI response. Please try again.');
+  }
+}

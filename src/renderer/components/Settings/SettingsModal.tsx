@@ -11,10 +11,16 @@ import {
   Trash2, 
   Check, 
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Palette,
+  Upload,
+  Image
 } from 'lucide-react';
 import { FirebaseService } from '../../services/firebase';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../context/ThemeContext';
+import { useBackground } from '../../context/BackgroundContext';
+import { compressAndConvertToBase64 } from '../../utils/imageCompression';
 import './SettingsModal.css';
 
 interface SettingsModalProps {
@@ -22,7 +28,7 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-type Tab = 'profile' | 'account';
+type Tab = 'profile' | 'account' | 'themes';
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { state: { user } } = useAuth();
@@ -42,6 +48,56 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [verifyEmail, setVerifyEmail] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Theme Context
+  const { activeTheme, setTheme, themesList } = useTheme();
+
+  // Background Context
+  const { dashboardBackground, setDashboardBackground } = useBackground();
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const [bgError, setBgError] = useState<string | null>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingBg(true);
+    setBgError(null);
+
+    try {
+      const base64 = await compressAndConvertToBase64(file);
+      await setDashboardBackground(base64);
+    } catch (err: any) {
+      console.error('Error uploading background:', err);
+      setBgError(err.message || 'Failed to compress or upload background image.');
+    } finally {
+      setUploadingBg(false);
+      if (bgFileInputRef.current) bgFileInputRef.current.value = '';
+    }
+  };
+
+  const handleBgRemove = async () => {
+    setUploadingBg(true);
+    setBgError(null);
+    try {
+      await setDashboardBackground(null);
+    } catch (err: any) {
+      console.error('Error removing background:', err);
+      setBgError(err.message || 'Failed to remove background image.');
+    } finally {
+      setUploadingBg(false);
+    }
+  };
+
+  const groupedThemes = React.useMemo(() => {
+    const groups: Record<string, typeof themesList> = {};
+    themesList.forEach(t => {
+      if (!groups[t.category]) groups[t.category] = [];
+      groups[t.category].push(t);
+    });
+    return Object.entries(groups);
+  }, [themesList]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -176,7 +232,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = (event) => {
-        const img = new Image();
+        const img = new window.Image();
         img.src = event.target?.result as string;
         img.onload = () => {
           const canvas = document.createElement('canvas');
@@ -268,6 +324,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             >
               <Lock size={18} />
               <span>Account</span>
+            </button>
+            <button 
+              className={`settings-nav-item ${activeTab === 'themes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('themes')}
+            >
+              <Palette size={18} />
+              <span>Themes</span>
             </button>
           </aside>
 
@@ -416,6 +479,187 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                         Delete Account
                       </button>
                     </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'themes' && (
+                <motion.div 
+                  key="themes"
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  className="settings-section"
+                  style={{ overflowY: 'auto', maxHeight: 'calc(80vh - 100px)' }}
+                >
+                  <h3 style={{ marginBottom: 16, color: 'var(--theme-text-primary)' }}>Appearance & Theming</h3>
+                  <p style={{ color: 'var(--theme-text-secondary)', marginBottom: 24, fontSize: 13 }}>
+                    Select a theme to customize the look and feel of your workspace. Changes apply instantly.
+                  </p>
+                  
+                  {groupedThemes.map(([category, themes]) => (
+                    <div key={category} style={{ marginBottom: 24 }}>
+                      <h4 style={{ 
+                        color: 'var(--theme-text-primary)', 
+                        fontSize: 14, 
+                        fontWeight: 600, 
+                        marginBottom: 12,
+                        paddingBottom: 4,
+                        borderBottom: '1px solid var(--theme-border)'
+                      }}>
+                        {category}
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 12 }}>
+                        {themes.map(theme => (
+                          <button
+                            key={theme.id}
+                            onClick={() => setTheme(theme.id)}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              padding: '12px 8px',
+                              borderRadius: 8,
+                              background: theme.tokens.background,
+                              border: `2px solid ${activeTheme.id === theme.id ? theme.tokens.primary : 'transparent'}`,
+                              cursor: 'pointer',
+                              boxShadow: activeTheme.id === theme.id ? `0 0 0 2px ${theme.tokens.secondary}40` : '0 2px 5px rgba(0,0,0,0.2)',
+                              transition: 'all 0.2s',
+                              outline: 'none'
+                            }}
+                          >
+                            <div style={{ 
+                              width: '100%', 
+                              height: 36, 
+                              borderRadius: 4, 
+                              background: theme.tokens.surface,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginBottom: 8
+                            }}>
+                              <div style={{ width: 12, height: 12, borderRadius: '50%', background: theme.tokens.primary, marginRight: 4 }} />
+                              <div style={{ width: 12, height: 12, borderRadius: '50%', background: theme.tokens.secondary }} />
+                            </div>
+                            <span style={{ 
+                              color: theme.tokens.textPrimary, 
+                              fontSize: 12, 
+                              fontWeight: activeTheme.id === theme.id ? 600 : 500
+                            }}>
+                              {theme.name}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Custom Background Image Upload */}
+                  <div style={{ 
+                    marginTop: 32, 
+                    paddingTop: 24, 
+                    borderTop: '1px solid var(--theme-border)' 
+                  }}>
+                    <h3 style={{ marginBottom: 12, color: 'var(--theme-text-primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Image size={18} /> Custom Background Image
+                    </h3>
+                    <p style={{ color: 'var(--theme-text-secondary)', marginBottom: 20, fontSize: 13 }}>
+                      Upload a custom background image to personalize your main dashboard. Supported formats: JPG, PNG, WebP.
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                      <div style={{ 
+                        width: 120, 
+                        height: 75, 
+                        borderRadius: 8, 
+                        backgroundColor: dashboardBackground ? 'transparent' : 'var(--theme-surface)',
+                        backgroundImage: dashboardBackground ? `url(${dashboardBackground})` : 'none',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        border: '1px solid var(--theme-border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'var(--theme-text-secondary)',
+                        fontSize: 12,
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}>
+                        {!dashboardBackground && <span>No Background</span>}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <input 
+                          type="file" 
+                          ref={bgFileInputRef}
+                          onChange={handleBgUpload}
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                        />
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <button
+                            onClick={() => bgFileInputRef.current?.click()}
+                            disabled={uploadingBg}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '8px 16px',
+                              borderRadius: 6,
+                              background: 'var(--theme-primary)',
+                              color: 'var(--theme-on-primary)',
+                              border: 'none',
+                              cursor: 'pointer',
+                              fontWeight: 500,
+                              fontSize: 13,
+                              opacity: uploadingBg ? 0.6 : 1
+                            }}
+                          >
+                            {uploadingBg ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                            Upload Image
+                          </button>
+                          {dashboardBackground && (
+                            <button
+                              onClick={handleBgRemove}
+                              disabled={uploadingBg}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '8px 16px',
+                                borderRadius: 6,
+                                background: 'transparent',
+                                color: 'var(--theme-danger, #ef4444)',
+                                border: '1px solid var(--theme-danger, #ef4444)',
+                                cursor: 'pointer',
+                                fontWeight: 500,
+                                fontSize: 13,
+                                opacity: uploadingBg ? 0.6 : 1
+                              }}
+                            >
+                              <Trash2 size={14} />
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <span style={{ fontSize: 11, color: 'var(--theme-text-secondary)' }}>
+                          Resolution up to 1280x720. Compressed automatically.
+                        </span>
+                      </div>
+                    </div>
+
+                    {bgError && (
+                      <div style={{ 
+                        marginTop: 12, 
+                        color: 'var(--theme-danger, #ef4444)', 
+                        fontSize: 12,
+                        background: 'color-mix(in srgb, var(--theme-danger, #ef4444) 10%, transparent)',
+                        padding: '8px 12px',
+                        borderRadius: 6
+                      }}>
+                        {bgError}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}

@@ -311,7 +311,7 @@ export const ActivityAIAgent: React.FC<ActivityAIAgentProps> = ({ projectId }) =
         <div className="activity-agent-panel">
           <div className="activity-agent-header">
             <div className="activity-agent-title">
-              <Sparkles size={16} color="#9485f5" />
+              <Sparkles size={16} color="var(--theme-primary)" />
               AI Assistant
               <span className="activity-agent-role">{role}</span>
             </div>
@@ -332,7 +332,7 @@ export const ActivityAIAgent: React.FC<ActivityAIAgentProps> = ({ projectId }) =
                     <pre>{JSON.stringify(msg.activityPreview, null, 2)}</pre>
                     <div className="activity-agent-preview-actions" style={{ flexWrap: 'wrap' }}>
                       <button 
-                        className={`activity-agent-preview-btn activity-agent-preview-btn--save ${savedActivities.has(msg.id) ? 'activity-agent-preview-btn--saved' : ''}`}
+                         className={`activity-agent-preview-btn activity-agent-preview-btn--save ${savedActivities.has(msg.id) ? 'activity-agent-preview-btn--saved' : ''}`}
                         onClick={() => handleSaveActivity(msg.activityPreview!, msg.id)}
                         disabled={savedActivities.has(msg.id) || savingActivities.has(msg.id)}
                       >
@@ -364,7 +364,7 @@ export const ActivityAIAgent: React.FC<ActivityAIAgentProps> = ({ projectId }) =
                             className="activity-agent-preview-btn activity-agent-preview-btn--regen"
                             onClick={() => handleCancelRemaining(msg.id)}
                             disabled={savingActivities.has(msg.id)}
-                            style={{ color: '#e66b7a', borderColor: 'rgba(230, 107, 122, 0.2)' }}
+                            style={{ color: 'var(--theme-error, #ef4444)', borderColor: 'color-mix(in srgb, var(--theme-error, #ef4444) 20%, transparent)' }}
                           >
                             <Ban size={12} style={{ marginRight: 4 }} /> Cancel remaining
                           </button>
@@ -385,7 +385,7 @@ export const ActivityAIAgent: React.FC<ActivityAIAgentProps> = ({ projectId }) =
                     </div>
                     
                     {sequentialState?.active && !savedActivities.has(msg.id) && (
-                      <div style={{ fontSize: 11, color: '#a0a4b8', marginTop: 12, textAlign: 'center', fontStyle: 'italic' }}>
+                      <div style={{ fontSize: 11, color: 'var(--theme-text-secondary)', marginTop: 12, textAlign: 'center', fontStyle: 'italic' }}>
                         Activity {sequentialState.current} of {sequentialState.total} — Click 'Add to Project' to save and continue
                       </div>
                     )}

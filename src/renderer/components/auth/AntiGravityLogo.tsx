@@ -8,9 +8,9 @@ export const AntiGravityLogo: React.FC = () => (
         width: 64, 
         height: 64,
         padding: 4,
-        background: 'rgba(255, 255, 255, 0.03)',
+        background: `color-mix(in srgb, var(--theme-text-primary) ${0.03 * 100}%, transparent)`,
         borderRadius: 16,
-        border: '1px solid rgba(255, 255, 255, 0.08)',
+        border: '1px  solid var(--theme-border)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)'
       }}>
       <img src={logo} alt="Coollab Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />

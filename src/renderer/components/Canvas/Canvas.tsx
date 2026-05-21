@@ -85,7 +85,7 @@ const ImageCardContent: React.FC<{ node: CanvasNode, updateNode: (id: string, up
 
   if (node.content !== 'new_image') {
     return (
-      <div className="placeholder" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#ef4444' }}>
+      <div className="placeholder" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--theme-error)' }}>
         <ImageIcon size={24} style={{ opacity: 0.5, marginBottom: '8px' }} />
         <span>Broken Image</span>
       </div>
@@ -107,7 +107,7 @@ const ImageCardContent: React.FC<{ node: CanvasNode, updateNode: (id: string, up
           >
             Upload Local Image
           </button>
-          {error && <div style={{ color: '#ef4444', fontSize: '11px', textAlign: 'center', marginTop: '4px' }}>{error}</div>}
+          {error && <div style={{ color: 'var(--theme-error)', fontSize: '11px', textAlign: 'center', marginTop: '4px' }}>{error}</div>}
         </div>
       )}
     </div>
@@ -127,6 +127,11 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [connectFrom, setConnectFrom] = useState<string | null>(null); // source nodeId for connect mode
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
+  const [dragPositions, setDragPositions] = useState<Record<string, { x: number, y: number }>>({});
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [spacePressed, setSpacePressed] = useState(false);
+  const isDragging = useRef(false);
 
   const yjsService = YjsService.getInstance();
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -155,7 +160,24 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
       const nodesMap = doc.getMap<CanvasNode>('canvas-nodes');
       const edgesMap = doc.getMap<CanvasEdge>('canvas-edges');
 
+      // Hydrate from Firestore if Yjs state is empty (Step 2)
+      if (nodesMap.size === 0) {
+        const firebase = FirebaseService.getInstance();
+        firebase.getNote(roomName, pId || undefined, uId || undefined, 'canvas').then((note: any) => {
+          if (note && note.nodes && note.nodes.length > 0 && nodesMap.size === 0) {
+            doc.transact(() => {
+              note.nodes.forEach((n: any) => nodesMap.set(n.id, n));
+              (note.edges || []).forEach((e: any) => edgesMap.set(e.id, e));
+            }, 'initial-hydration');
+          }
+        });
+      }
+
       const syncFromYjs = () => {
+        const received = Date.now();
+        const sent = (window as any).__canvasLastChange || 0;
+        console.log(`[Canvas] REMOTE update received at ${received}${sent ? ` | Approximate Local Delay: ${received - sent}ms` : ''}`);
+        
         setData({
           nodes: Array.from(nodesMap.values()),
           edges: Array.from(edgesMap.values())
@@ -170,7 +192,7 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
       provider.awareness.setLocalStateField('user', {
         uid: userId,
         name: username,
-        color: '#7c3aed', // Default canvas user color
+        color: 'var(--theme-primary)', // Default canvas user color
       });
 
       // Awareness (Cursors)
@@ -186,14 +208,51 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
       };
 
       provider.awareness.on('change', updateCursors);
+
+      // Monitor connection status for debugging latency
+      console.log('[Canvas Yjs] Provider created:', provider);
+      provider.on('status', (event: { connected: boolean }) => {
+        console.log(`[Canvas Yjs] Status Update at ${Date.now()}:`, event);
+      });
+      provider.on('peers', (event: { webrtcPeers: string[], bcPeers: string[] }) => {
+        console.log(`[Canvas Yjs] Peers at ${Date.now()}:`, event);
+        console.log(`[Canvas Yjs] WebRTC peers count: ${event.webrtcPeers?.length}`);
+        console.log(`[Canvas Yjs] BC peers count: ${event.bcPeers?.length}`);
+      });
+      provider.on('synced', (event: any) => {
+        console.log(`[Canvas Yjs] Synced at ${Date.now()}:`, event);
+      });
+
+      // Step 4 Debug Info
+      console.log('[Canvas Debug] Has ydoc:', !!doc);
+      console.log('[Canvas Debug] Has provider:', !!provider);
+      console.log('[Canvas Debug] nodesMap size:', nodesMap.size);
+
       setLoading(false);
     });
 
     return () => {
+      if (providerRef.current) {
+        providerRef.current.awareness.setLocalState(null);
+      }
       sync.destroy();
       yjs.destroy();
     };
   }, [roomName, username, userId]);
+
+  // ── Periodic Backup Save (Step 4) ──────────────────────────────────
+  useEffect(() => {
+    if (!roomName || readOnly || data.nodes.length === 0) return;
+    const interval = setInterval(() => {
+      const firebase = FirebaseService.getInstance();
+      firebase.saveNote(roomName, {
+        nodes: data.nodes,
+        edges: data.edges,
+        updatedAt: Date.now()
+      } as any);
+    }, 30000); // 30s backup interval
+    return () => clearInterval(interval);
+  }, [roomName, data.nodes, data.edges, readOnly]);
 
   useEffect(() => {
     const handleDocDeleted = (e: any) => {
@@ -226,6 +285,58 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
     return () => window.removeEventListener('coollab-doc-deleted', handleDocDeleted);
   }, []);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !e.repeat) {
+        // Don't pan if typing in a textarea
+        if ((e.target as HTMLElement).tagName === 'TEXTAREA' || (e.target as HTMLElement).tagName === 'INPUT') return;
+        e.preventDefault();
+        setSpacePressed(true);
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') setSpacePressed(false);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+    };
+  }, []);
+
+  // Manual wheel listener to support non-passive preventDefault and zoom-to-cursor
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+
+    const handleWheelRaw = (e: WheelEvent) => {
+      e.preventDefault();
+      
+      const rect = el.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Mouse position in canvas space before zoom
+      const canvasX = (mouseX - offset.x) / scale;
+      const canvasY = (mouseY - offset.y) / scale;
+
+      const zoomSpeed = 0.1;
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = Math.min(3, Math.max(0.1, scale * delta));
+
+      // New offset to keep the canvas point under the mouse
+      const newOffsetX = mouseX - canvasX * newScale;
+      const newOffsetY = mouseY - canvasY * newScale;
+
+      setScale(newScale);
+      setOffset({ x: newOffsetX, y: newOffsetY });
+    };
+
+    el.addEventListener('wheel', handleWheelRaw, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheelRaw);
+  }, [offset, scale]);
+
   const addNode = (type: CanvasCardType) => {
     const doc = yjsService.getDoc();
     const nodesMap = doc.getMap<CanvasNode>('canvas-nodes');
@@ -243,6 +354,7 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
     };
 
     nodesMap.set(newNodeId, newNode);
+    // Real-time sync handled by Yjs; periodic backup handles Firestore
 
     window.dispatchEvent(new CustomEvent('workspace-action', {
       detail: { type: 'canvas_node_created', label: newNode.content }
@@ -262,11 +374,18 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
 
   const updateNode = (id: string, updates: Partial<CanvasNode>) => {
     if (readOnly) return;
+    const now = Date.now();
+    console.log(`[Canvas] LOCAL change at ${now} — updating ${id}`);
+    (window as any).__canvasLastChange = now;
+
     const doc = yjsService.getDoc();
     const nodesMap = doc.getMap<CanvasNode>('canvas-nodes');
     const existing = nodesMap.get(id);
     if (existing) {
-      nodesMap.set(id, { ...existing, ...updates });
+      const updated = { ...existing, ...updates };
+      yjsService.getDoc().transact(() => {
+        nodesMap.set(id, updated);
+      }, 'local-update');
     }
   };
 
@@ -280,7 +399,8 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
     );
     if (exists) return;
     const edgeId = `edge-${Math.random().toString(36).substr(2, 9)}`;
-    edgesMap.set(edgeId, { id: edgeId, fromId, toId });
+    const newEdge = { id: edgeId, fromId, toId };
+    edgesMap.set(edgeId, newEdge);
   };
 
   const deleteEdge = (edgeId: string) => {
@@ -339,27 +459,34 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!providerRef.current) return;
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (rect) {
-      const x = (e.clientX - rect.left - offset.x) / scale;
-      const y = (e.clientY - rect.top - offset.y) / scale;
-      providerRef.current.awareness.setLocalStateField('cursor', { x, y });
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (tool === 'pan' || e.button === 1 || spacePressed) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
     }
   };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey) {
-      const zoomSpeed = 0.001;
-      const delta = -e.deltaY * zoomSpeed;
-      setScale(prev => Math.min(Math.max(0.1, prev + delta), 2));
-    } else {
-      setOffset(prev => ({
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY
-      }));
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (providerRef.current) {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        const x = (e.clientX - rect.left - offset.x) / scale;
+        const y = (e.clientY - rect.top - offset.y) / scale;
+        providerRef.current.awareness.setLocalStateField('cursor', { x, y });
+      }
     }
+
+    if (isPanning) {
+      setOffset({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsPanning(false);
   };
 
   if (loading) return <div className="canvas-loading">Loading Canvas...</div>;
@@ -368,9 +495,16 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
     <div
       className="canvas-container"
       ref={canvasRef}
-      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      style={{ cursor: tool === 'pan' ? 'grab' : 'default' }}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={() => {
+        handleMouseUp();
+        if (providerRef.current) {
+          providerRef.current.awareness.setLocalStateField('cursor', null);
+        }
+      }}
+      style={{ cursor: (tool === 'pan' || spacePressed) ? (isPanning ? 'grabbing' : 'grab') : 'default' }}
       onClick={() => { setSelectedIds([]); setSelectedEdgeId(null); }}
     >
         {/* Background Grid */}
@@ -413,10 +547,15 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
               const to = data.nodes.find(n => n.id === edge.toId);
               if (!from || !to) return null;
 
-              const cx1 = from.x + from.width / 2;
-              const cy1 = from.y + from.height / 2;
-              const cx2 = to.x + to.width / 2;
-              const cy2 = to.y + to.height / 2;
+              const fromX = dragPositions[from.id]?.x ?? from.x;
+              const fromY = dragPositions[from.id]?.y ?? from.y;
+              const toX = dragPositions[to.id]?.x ?? to.x;
+              const toY = dragPositions[to.id]?.y ?? to.y;
+
+              const cx1 = fromX + from.width / 2;
+              const cy1 = fromY + from.height / 2;
+              const cx2 = toX + to.width / 2;
+              const cy2 = toY + to.height / 2;
 
               const angle = Math.atan2(cy2 - cy1, cx2 - cx1);
               const reverseAngle = Math.atan2(cy1 - cy2, cx1 - cx2);
@@ -494,15 +633,36 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
             <Rnd
               key={node.id}
               size={{ width: node.width, height: node.height }}
-               position={{ x: node.x, y: node.y }}
-              onDragStop={(e, d) => !readOnly && updateNode(node.id, { x: d.x, y: d.y })}
-              onResizeStop={(e, direction, ref, delta, position) => {
-                if (readOnly) return;
-                updateNode(node.id, {
-                  width: parseInt(ref.style.width),
-                  height: parseInt(ref.style.height),
-                  ...position
+              position={{ x: node.x, y: node.y }}
+              onDragStart={() => {
+                isDragging.current = true;
+              }}
+              onDrag={(e, d) => {
+                setDragPositions(prev => ({ ...prev, [node.id]: { x: d.x, y: d.y } }));
+                // For real-time peer sync during drag (Yjs is instant)
+                if (!readOnly) updateNode(node.id, { x: d.x, y: d.y });
+              }}
+              onDragStop={(e, d) => {
+                isDragging.current = false;
+                setDragPositions(prev => {
+                  const next = { ...prev };
+                  delete next[node.id];
+                  return next;
                 });
+                // Final sync
+                if (!readOnly) {
+                  updateNode(node.id, { x: d.x, y: d.y });
+                }
+              }}
+              onResizeStart={() => {
+                isDragging.current = true;
+              }}
+              onResizeStop={(e, direction, ref, delta, position) => {
+                isDragging.current = false;
+                if (readOnly) return;
+                const width = parseInt(ref.style.width);
+                const height = parseInt(ref.style.height);
+                updateNode(node.id, { width, height, ...position });
               }}
               scale={scale}
               dragEnabled={tool === 'select'}
@@ -615,9 +775,9 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
 
         {/* Bottom Actions (Zoom controls) */}
         <div className="canvas-zoom-controls" onClick={e => e.stopPropagation()}>
-          <button onClick={() => setScale(prev => Math.max(0.1, prev - 0.1))}><ZoomOut size={16} /></button>
+          <button onClick={() => setScale(prev => Math.max(0.1, prev * 0.9))} title="Zoom Out"><ZoomOut size={16} /></button>
           <span className="zoom-percentage">{Math.round(scale * 100)}%</span>
-          <button onClick={() => setScale(prev => Math.min(2, prev + 0.1))}><ZoomIn size={16} /></button>
+          <button onClick={() => setScale(prev => Math.min(3, prev * 1.1))} title="Zoom In"><ZoomIn size={16} /></button>
           <button onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }); }} title="Reset View"><Maximize size={16} /></button>
         </div>
 
@@ -648,7 +808,7 @@ export const Canvas: React.FC<CanvasProps> = ({ roomName, username, userId, read
         {deleteError && (
           <div style={{
             position: 'absolute', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
-            background: '#ef4444', color: 'white', padding: '8px 16px', borderRadius: '4px',
+            background: 'var(--theme-error)', color: 'white', padding: '8px 16px', borderRadius: '4px',
             zIndex: 1000, fontSize: '13px', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
           }}>
             {deleteError}

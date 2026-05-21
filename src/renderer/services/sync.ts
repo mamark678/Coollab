@@ -268,7 +268,7 @@ export class SyncService {
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
     this.debounceTimer = setTimeout(() => {
       this.executeSave(roomName, doc);
-    }, 500);
+    }, 50);
   }
 
   private async executeSave(roomName: string, doc: Y.Doc): Promise<void> {

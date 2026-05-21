@@ -10,7 +10,7 @@ import './QuickSwitcher.css';
 interface QuickSwitcherProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectDoc: (docId: string, title: string) => void;
+  onSelectDoc: (docId: string, title: string, type?: 'document' | 'canvas' | 'base' | 'folder' | null) => void;
   recentDocIds?: string[];
 }
 
@@ -82,7 +82,7 @@ export const QuickSwitcher: React.FC<QuickSwitcherProps> = ({
         e.preventDefault();
         if (results[selectedIndex]) {
           const doc = results[selectedIndex];
-          onSelectDoc(doc.id, doc.title || 'Untitled Document');
+          onSelectDoc(doc.id, doc.title || 'Untitled Document', (doc.type as any) || 'document');
           onClose();
         }
       } else if (e.key === 'Escape') {
@@ -155,7 +155,7 @@ export const QuickSwitcher: React.FC<QuickSwitcherProps> = ({
               key={doc.id}
               className={`quick-switcher__item ${i === selectedIndex ? 'quick-switcher__item--selected' : ''}`}
               onClick={() => {
-                onSelectDoc(doc.id, doc.title || 'Untitled Document');
+                onSelectDoc(doc.id, doc.title || 'Untitled Document', (doc.type as any) || 'document');
                 onClose();
               }}
               onMouseEnter={() => setSelectedIndex(i)}

@@ -9,7 +9,12 @@ import CollaborativeEditor from './components/Editor/CollaborativeEditor'
 import { EditorToolbar } from './components/EditorToolbar/EditorToolbar'
 import { Sidebar } from './components/Sidebar/Sidebar'
 import { Toolbar } from './components/Toolbar/Toolbar'
-import { FirebaseService } from './services/firebase'
+import { FirebaseService, DocumentSchema } from './services/firebase'
+import { WorkspaceHeader } from './components/Workspace/WorkspaceHeader'
+import { WorkspaceSidebar } from './components/Workspace/WorkspaceSidebar'
+import { WorkspaceContent } from './components/Workspace/WorkspaceContent'
+import { WorkspaceRightRail } from './components/Workspace/WorkspaceRightRail'
+import { useBackground } from './context/BackgroundContext'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useShallow } from 'zustand/react/shallow'
 
@@ -181,7 +186,7 @@ const MobileMoreMenu = memo(({ onHistory, onSearch, onProperties, showHistory, s
           height: 32,
           background: 'transparent',
           border: 'none',
-          color: '#e8eaf0',
+          color: 'var(--theme-text-primary)',
           cursor: 'pointer',
           borderRadius: 8,
         }}
@@ -196,18 +201,18 @@ const MobileMoreMenu = memo(({ onHistory, onSearch, onProperties, showHistory, s
           top: 'calc(100% + 4px)',
           right: 0,
           minWidth: 180,
-          background: '#1a1a2e',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          background: 'var(--theme-surface)',
+          border: '1px solid var(--theme-border)',
           borderRadius: 12,
           padding: 6,
           zIndex: 2000,
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5)',
+          boxShadow: 'var(--shadow-md)',
         }}>
           <button
             onClick={() => { onSearch(); setIsOpen(false); }}
             style={{
               width: '100%', padding: '8px 12px', background: 'transparent', border: 'none',
-              borderRadius: 6, color: '#cbd5e1', cursor: 'pointer', textAlign: 'left',
+              borderRadius: 6, color: 'var(--theme-text-secondary)', cursor: 'pointer', textAlign: 'left',
               display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500,
             }}
           >
@@ -216,8 +221,8 @@ const MobileMoreMenu = memo(({ onHistory, onSearch, onProperties, showHistory, s
           <button
             onClick={() => { onHistory(); setIsOpen(false); }}
             style={{
-              width: '100%', padding: '8px 12px', background: showHistory ? 'rgba(124, 107, 240, 0.1)' : 'transparent',
-              border: 'none', borderRadius: 6, color: showHistory ? '#a78bfa' : '#cbd5e1',
+              width: '100%', padding: '8px 12px', background: showHistory ? 'color-mix(in srgb, var(--theme-primary) 10%, transparent)' : 'transparent',
+              border: 'none', borderRadius: 6, color: showHistory ? 'var(--theme-secondary)' : 'var(--theme-text-secondary)',
               cursor: 'pointer', textAlign: 'left',
               display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500,
             }}
@@ -227,8 +232,8 @@ const MobileMoreMenu = memo(({ onHistory, onSearch, onProperties, showHistory, s
           <button
             onClick={() => { onProperties(); setIsOpen(false); }}
             style={{
-              width: '100%', padding: '8px 12px', background: showProperties ? 'rgba(124, 107, 240, 0.1)' : 'transparent',
-              border: 'none', borderRadius: 6, color: showProperties ? '#a78bfa' : '#cbd5e1',
+              width: '100%', padding: '8px 12px', background: showProperties ? 'color-mix(in srgb, var(--theme-primary) 10%, transparent)' : 'transparent',
+              border: 'none', borderRadius: 6, color: showProperties ? 'var(--theme-secondary)' : 'var(--theme-text-secondary)',
               cursor: 'pointer', textAlign: 'left',
               display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, fontWeight: 500,
             }}
@@ -286,6 +291,11 @@ export function App() {
     setViewingStudentId: s.setViewingStudentId
   })));
   const { state: { user } } = useAuth()
+  const { setActiveProjectId } = useBackground()
+
+  React.useEffect(() => {
+    setActiveProjectId(currentProjectId)
+  }, [currentProjectId, setActiveProjectId])
 
   const { profile } = useUserProfile(user?.uid)
 
@@ -379,12 +389,20 @@ export function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
 
+  const [workspaceActiveView, setWorkspaceActiveView] = useState<'workspace' | 'activities' | 'flashcards' | 'graph' | 'canvas'>('workspace')
+  const [workspaceRightPanel, setWorkspaceRightPanel] = useState<'collaborators' | 'comments' | 'history' | null>(null)
+
+  const [isInitializingWorkspace, setIsInitializingWorkspace] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [projectType, setProjectType] = useState<string | null>(null);
+
   const handleEditorReady = useCallback((editorInstance: Editor) => {
     setEditor(editorInstance)
   }, [])
 
   // Navigation handler for graph / backlinks
-  const handleNavigateToDoc = useCallback((docId: string, title?: string, type?: 'document' | 'canvas' | 'base' | null) => {
+  const handleNavigateToDoc = useCallback((docId: string, title?: string, type?: 'document' | 'canvas' | 'base' | 'folder' | null) => {
     setCurrentNoteId(docId)
     setSidebarSelectionId(docId)
     if (title) {
@@ -395,6 +413,72 @@ export function App() {
     }
   }, [setCurrentNoteId, setActiveDocTitle, setSidebarSelectionId, setCurrentDocType])
 
+  // Central document and note creation handler for WorkspaceSidebar
+  const isCreating = useRef(false);
+  const handleCreateNote = useCallback(async (
+    title?: string, 
+    type?: 'document' | 'folder' | 'canvas' | 'base', 
+    isFolder: boolean = false
+  ) => {
+    if (isCreating.current || !user || !currentProjectId) return;
+    isCreating.current = true;
+    try {
+      const typeStr = type || (isFolder ? 'folder' : 'document');
+      const finalTitle = title || (
+        typeStr === 'folder' ? 'Untitled Folder' :
+        typeStr === 'canvas' ? 'Untitled Canvas' :
+        typeStr === 'base' ? 'Untitled Base' : 'Untitled Document'
+      );
+      
+      const randId = Math.random().toString(36).substr(2, 9);
+      const prefix = typeStr === 'folder' ? 'folder' : typeStr === 'canvas' ? 'canvas' : typeStr === 'base' ? 'base' : 'room';
+      const id = `${prefix}-${randId}`;
+      
+      let initialContent: string | null = null;
+      if (typeStr === 'canvas') {
+        initialContent = JSON.stringify({ nodes: [], edges: [] });
+      } else if (typeStr === 'base') {
+        initialContent = JSON.stringify({ views: [] });
+      }
+
+      const newDoc: DocumentSchema = {
+        id,
+        title: finalTitle,
+        content: initialContent,
+        ownerId: user.uid,
+        collaborators: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        isFolder: typeStr === 'folder',
+        parentId: null,
+        projectId: currentProjectId,
+        type: typeStr === 'document' ? undefined : (typeStr as any)
+      };
+
+      await FirebaseService.getInstance().createNote(
+        id,
+        newDoc,
+        activityType === 'individual' && !isAdmin ? currentProjectId : undefined,
+        activityType === 'individual' && !isAdmin ? user.uid : undefined
+      );
+
+      if (typeStr !== 'folder') {
+        setActiveDocTitle(finalTitle);
+        setCurrentNoteId(id);
+        setCurrentDocType(typeStr as any);
+        setWorkspaceActiveView('workspace');
+      }
+
+      window.dispatchEvent(new CustomEvent('workspace-action', {
+        detail: { type: `${typeStr}_created`, title: finalTitle }
+      }));
+    } catch (err) {
+      console.error('[App] Failed to create document:', err);
+    } finally {
+      isCreating.current = false;
+    }
+  }, [user, currentProjectId, activityType, isAdmin, setActiveDocTitle, setCurrentNoteId, setCurrentDocType]);
+
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024)
   const [mobileTab, setMobileTab] = useState<'home' | 'editor' | 'activities' | 'leaderboard' | 'profile'>('editor')
 
@@ -403,11 +487,6 @@ export function App() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
-
-  const [isInitializingWorkspace, setIsInitializingWorkspace] = useState(false);
-  const [isOwner, setIsOwner] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [projectType, setProjectType] = useState<string | null>(null);
 
   // Admin in activity project, NOT viewing a student workspace = dashboard mode
   // In this mode: hide editor, toolbar, graph/backlinks/activity icons. Show dashboard only.
@@ -986,7 +1065,7 @@ export function App() {
       <div className="app-layout">
         <Sidebar collapsed={false} onToggleCollapse={() => { }} />
         <div className="app-main" style={{ borderRadius: 0 }}>
-          <div className="graph-panel__header" style={{ background: '#0d0d1a' }}>
+          <div className="graph-panel__header" style={{ background: 'var(--theme-background)' }}>
             <div className="graph-panel__title">Graph View</div>
             <div className="graph-panel__actions">
               <button
@@ -1197,7 +1276,7 @@ export function App() {
           className="splash-screen"
           style={{
             position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            background: '#0d0d1a', display: 'flex', flexDirection: 'column',
+            background: 'var(--theme-background)', display: 'flex', flexDirection: 'column',
             alignItems: 'center', justifyContent: 'center', zIndex: 20000,
             animation: 'fadeOut 0.5s ease-out forwards',
             animationDelay: '0.5s'
@@ -1205,13 +1284,13 @@ export function App() {
         >
           <div style={{ textAlign: 'center', animation: 'scaleIn 0.5s ease-out' }}>
             <div style={{
-              width: '64px', height: '64px', background: 'var(--accent-primary)',
+              width: '64px', height: '64px', background: 'var(--theme-primary)',
               borderRadius: '16px', display: 'flex', alignItems: 'center',
               justifyContent: 'center', marginBottom: '24px', margin: '0 auto'
             }}>
-              <FileText size={32} color="#fff" />
+              <FileText size={32} color="var(--theme-on-primary)" />
             </div>
-            <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#fff', marginBottom: '8px' }}>Coollab</h1>
+            <h1 style={{ fontSize: '24px', fontWeight: 700, color: 'var(--theme-text-primary)', marginBottom: '8px' }}>Coollab</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>Preparing your collaborative workspace...</p>
             <div className="skeleton" style={{ width: '120px', height: '4px', marginTop: '24px', borderRadius: '2px' }} />
           </div>
@@ -1238,13 +1317,13 @@ export function App() {
       {isInitializingWorkspace && (
         <div className="initialization-overlay" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(13, 13, 26, 0.9)', backdropFilter: 'blur(8px)',
+          background: 'color-mix(in srgb, var(--theme-background) 90%, transparent)', backdropFilter: 'blur(8px)',
           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999, color: '#fff'
+          zIndex: 9999, color: 'var(--theme-text-primary)'
         }}>
-          <div className="loading-spinner" style={{ width: '40px', height: '40px', border: '3px solid rgba(124, 107, 240, 0.1)', borderTopColor: '#7c6bf0', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '20px' }} />
+          <div className="loading-spinner" style={{ width: '40px', height: '40px', border: '3px solid color-mix(in srgb, var(--theme-primary) 10%, transparent)', borderTopColor: 'var(--theme-primary)', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '20px' }} />
           <div style={{ fontSize: '18px', fontWeight: 600 }}>Initializing your workspace...</div>
-          <div style={{ fontSize: '14px', color: '#a0a4b8', marginTop: '8px' }}>Setting up your personal learning environment.</div>
+          <div style={{ fontSize: '14px', color: 'var(--theme-text-secondary)', marginTop: '8px' }}>Setting up your personal learning environment.</div>
           <style>{`
             @keyframes spin { to { transform: rotate(360deg); } }
           `}</style>
@@ -1305,361 +1384,126 @@ export function App() {
           </div>
         </div>
       )}
-        {/* Icon Rail (Obsidian-style left icon strip) */}
-        <div className="app-icon-rail">
-          <button
-            className="app-icon-rail__btn"
-            onClick={() => {
-              setCurrentProjectId(null);
-              setCurrentNoteId(null);
-            }}
-            title="Home"
-          >
-            <Home size={20} />
-          </button>
+        {/* Premium Workspace Sidebar */}
+        <WorkspaceSidebar
+          onBackToDashboard={() => {
+            setCurrentProjectId(null);
+            setCurrentNoteId(null);
+          }}
+          onSetWorkspaceView={() => {
+            setWorkspaceActiveView('workspace');
+          }}
+          onToggleActivities={() => {
+            setWorkspaceActiveView('activities');
+          }}
+          onToggleFlashcards={() => {
+            setWorkspaceActiveView('flashcards');
+          }}
+          onToggleGraph={() => {
+            setWorkspaceActiveView('graph');
+          }}
+          onToggleCanvas={() => {
+            setWorkspaceActiveView('canvas');
+          }}
+          onToggleTeam={() => {
+            setWorkspaceRightPanel(workspaceRightPanel === 'collaborators' ? null : 'collaborators');
+          }}
+          onToggleSettings={() => {
+            setShowProperties((v) => !v);
+          }}
+          onCreateDocument={(title, type, isFolder) => {
+            handleCreateNote(title, type, isFolder);
+          }}
+          onSelectDoc={(docId, title, type) => {
+            handleNavigateToDoc(docId, title, type);
+            setWorkspaceActiveView('workspace');
+          }}
+          isAdmin={isAdmin}
+          userRole={profile?.role || 'Guest'}
+          projectId={currentProjectId}
+          projectType={projectType}
+          activeView={workspaceActiveView}
+        />
 
-          {!isAdminDashboardMode && (
-            <>
-              <button
-                className={`app-icon-rail__btn ${!showGraphPanel && !showBacklinks ? 'app-icon-rail__btn--active' : ''}`}
-                onClick={() => {
-                  setShowGraphPanel(false);
-                  setShowBacklinks(false);
-                }}
-                title="Editor"
-              >
-                <FileText size={20} />
-              </button>
-            </>
-          )}
-          
-          {!isAdmin && (
-            <button
-              className={`app-icon-rail__btn ${showActivities ? 'app-icon-rail__btn--active' : ''}`}
-              onClick={() => {
-                const opening = !showActivities;
-                closeAllRightPanels();
-                if (opening) setShowActivities(true);
-              }}
-              title="Activities"
-            >
-              <Layers size={20} />
-            </button>
-          )}
-
-          {isAdmin && projectType === 'activity' && (
-            <button
-              className={`app-icon-rail__btn ${showLeaderboard ? 'app-icon-rail__btn--active' : ''}`}
-              onClick={() => {
-                const opening = !showLeaderboard;
-                closeAllRightPanels();
-                if (opening) setShowLeaderboard(true);
-              }}
-              title="Rankings"
-            >
-              <Trophy size={20} />
-            </button>
-          )}
-
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <button className="app-icon-rail__btn" onClick={() => setShowSearchModal(true)} title="Global Search">
-              <Search size={20} />
-            </button>
-            <button className="app-icon-rail__btn" onClick={() => setShowProperties(true)} title="Settings">
-              <Sliders size={20} />
-            </button>
-          </div>
-        </div>
-
-      {/* Sidebar */}
-      <Sidebar
-        collapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        onlineUsers={onlineCollaborators}
-        projectMembers={projectMembers}
-        viewingStudentId={viewingStudentId}
-        isMobileOpen={isMobileSidebarOpen}
-        onCloseMobile={() => setIsMobileSidebarOpen(false)}
-      />
-
-      {/* Main content */}
-      <div className="app-main" style={{ borderRadius: 0 }}>
-        {/* Title bar + sync indicator */}
-        <div className="app-top-bar">
-          <button
-            className="app-mobile-menu-btn"
-            onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-            style={{ display: isMobile ? 'flex' : 'none', background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '8px', cursor: 'pointer', marginLeft: '8px' }}
-          >
-            <Menu size={20} />
-          </button>
-          <Toolbar
-            title={activeDocTitle}
-            onTitleChange={handleUpdateTitle}
-            syncIndicator={syncStatus}
-            onShareClick={() => setShowShareDialog(true)}
-            collaborators={onlineCollaborators}
-            onCollaboratorsClick={() => setShowCollaboratorsMobile(true)}
+        {/* Main Workspace Area */}
+        <div 
+          style={{ 
+            flex: 1, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: '100%', 
+            minWidth: 0, 
+            overflow: 'hidden' 
+          }}
+        >
+          {/* Workspace Top Header */}
+          <WorkspaceHeader
+            onOpenSearch={() => setShowSearchModal(true)}
+            onOpenShare={() => setShowShareDialog(true)}
           />
-          <div className="app-top-bar__actions">
-            {!isAdminDashboardMode && (
-              <>
-                {/* On mobile, show only the most relevant icons */}
-                {!isMobile && (
-                  <button
-                    className="app-top-bar__panel-btn"
-                    onClick={() => setShowSearchModal(true)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 32,
-                      height: 32,
-                      background: 'transparent',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      borderRadius: 8,
-                      color: '#e8eaf0',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      flexShrink: 0
-                    }}
-                    title="Search (Ctrl+K)"
-                    type="button"
-                  >
-                    <Search size={16} />
-                  </button>
-                )}
-                {!isMobile && <NotificationsDropdown />}
-                {!isMobile && (
-                  <button
-                    className={`app-top-bar__panel-btn ${showHistory ? 'app-top-bar__panel-btn--active' : ''}`}
-                    onClick={() => {
-                      setShowHistory((v) => !v)
-                      if (!showHistory) {
-                        setShowComments(false)
-                        setShowProperties(false)
-                        setShowOutline(false)
-                        setShowBacklinks(false)
-                      }
-                    }}
-                    title="Version History"
-                    type="button"
-                  >
-                    <History size={14} />
-                    History
-                  </button>
-                )}
-                {/* Comment button — shown on both mobile and desktop */}
-                <button
-                  className={`app-top-bar__panel-btn ${showComments ? 'app-top-bar__panel-btn--active' : ''}`}
-                  onClick={() => {
-                    setShowComments((v) => !v)
-                    if (!showComments) {
-                      setShowHistory(false)
-                      setShowProperties(false)
-                      setShowOutline(false)
-                      setShowBacklinks(false)
-                    }
-                  }}
-                  title="Toggle Comments Panel"
-                  type="button"
-                >
-                  <MessageSquare size={14} />
-                  {!isMobile && 'Comment'}
-                </button>
-                {/* Share button — shown on mobile as icon only */}
-                {isMobile && (
-                  <button
-                    className="app-top-bar__panel-btn"
-                    onClick={() => setShowShareDialog(true)}
-                    title="Share"
-                    type="button"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 32,
-                      height: 32,
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#e8eaf0',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <Share2 size={14} />
-                  </button>
-                )}
-                {!isMobile && (
-                  <button
-                    className={`app-top-bar__panel-btn ${showProperties ? 'app-top-bar__panel-btn--active' : ''}`}
-                    onClick={() => {
-                      setShowProperties((v) => !v)
-                      if (!showProperties) {
-                        setShowComments(false)
-                        setShowHistory(false)
-                        setShowOutline(false)
-                        setShowBacklinks(false)
-                      }
-                    }}
-                    title="Toggle Properties Panel"
-                    type="button"
-                  >
-                    <Sliders size={14} />
-                    Properties
-                  </button>
-                )}
-                {!isMobile && (
-                  <div style={{ flexShrink: 0 }}>
-                    {editor && <ExportMenu editor={editor} />}
-                  </div>
-                )}
-                {/* Mobile: 3-dot more menu for additional actions */}
-                {isMobile && (
-                  <MobileMoreMenu
-                    onHistory={() => {
-                      setShowHistory((v) => !v);
-                      if (!showHistory) { setShowComments(false); setShowProperties(false); }
-                    }}
-                    onSearch={() => setShowSearchModal(true)}
-                    onProperties={() => {
-                      setShowProperties((v) => !v);
-                      if (!showProperties) { setShowComments(false); setShowHistory(false); }
-                    }}
-                    showHistory={showHistory}
-                    showProperties={showProperties}
-                  />
-                )}
-              </>
-            )}
+
+          {/* Content Area + Right Rail */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'row', minHeight: 0, overflow: 'hidden' }}>
+            <WorkspaceContent
+              activeView={workspaceActiveView}
+              currentNoteId={currentNoteId}
+              projectId={currentProjectId}
+              username={username}
+              userId={user?.uid}
+              userColor={color}
+              activeDocTitle={activeDocTitle}
+              collaborators={onlineCollaborators}
+              onToggleOutline={() => setShowOutline((v) => !v)}
+              onCreateDocument={(title, type, isFolder) => handleCreateNote(title, type, isFolder)}
+              onUpdateTitle={handleUpdateTitle}
+              onContentUpdate={stableOnContentUpdate}
+              onEditorReady={handleEditorReady}
+              onNavigateToDoc={(docId, title, type) => {
+                handleNavigateToDoc(docId, title, type);
+                setWorkspaceActiveView('workspace');
+              }}
+              onCloseView={() => setWorkspaceActiveView('workspace')}
+              onKickMember={handleKickMember}
+              onViewStudent={(studentId) => {
+                if (activityType === 'individual') {
+                  setViewingStudentId(studentId);
+                  setCurrentNoteId(null); // Force reload
+                  setWorkspaceActiveView('workspace');
+                }
+              }}
+              editor={editor}
+              viewerMode={viewerMode}
+              viewingStudentId={viewingStudentId}
+              showOutline={showOutline}
+              findOpen={findOpen}
+              findShowReplace={findShowReplace}
+              onCloseFind={() => setFindOpen(false)}
+              documentText={documentTextRef.current || (editor?.getText() ?? '')}
+              onToggleFullscreenGraph={() => setIsGraphFullscreen(true)}
+              isAdmin={isAdmin}
+              projectType={projectType}
+            />
+
+            <WorkspaceRightRail
+              onToggleCollaborators={() => setWorkspaceRightPanel(workspaceRightPanel === 'collaborators' ? null : 'collaborators')}
+              onToggleComments={() => setWorkspaceRightPanel(workspaceRightPanel === 'comments' ? null : 'comments')}
+              onToggleHistory={() => setWorkspaceRightPanel(workspaceRightPanel === 'history' ? null : 'history')}
+              activePanel={workspaceRightPanel}
+              projectId={currentProjectId}
+              selectedDocumentId={currentNoteId}
+              yjsProvider={null}
+              projectMembers={projectMembers}
+              onlineCollaborators={onlineCollaborators}
+              onKick={handleKickMember}
+              isOwner={isOwner}
+              kickedUserIds={new Set()}
+              userId={user?.uid}
+              editor={editor}
+              username={username}
+              userColor={color}
+            />
           </div>
         </div>
-
-        {/* Editor Toolbar — hidden in admin dashboard mode */}
-        {!isAdminDashboardMode && (
-          <EditorToolbar
-            editor={editor}
-            onToggleWordCount={() => setShowWordCount((v) => !v)}
-            onToggleOutline={() => {
-              setShowOutline((v) => !v)
-              if (!showOutline) {
-                setShowComments(false)
-                setShowProperties(false)
-              }
-            }}
-            onToggleDistractionFree={() => setIsDistractionFree(true)}
-            showWordCount={showWordCount}
-            showOutline={showOutline}
-            isDistractionFree={isDistractionFree}
-          />
-        )}
-
-        {/* Main content area */}
-        <div className="app-content">
-          <div className="app-editor-area">
-            {isAdminDashboardMode ? (
-              <ActivityBuilderInline projectId={currentProjectId!} />
-            ) : (
-              <>
-                {/* Find & Replace panel */}
-                {editor && (
-                  <FindReplace
-                    editor={editor}
-                    isOpen={findOpen}
-                    onClose={() => setFindOpen(false)}
-                    showReplace={findShowReplace}
-                  />
-                )}
-
-                {currentNoteId ? (
-                  <>
-                    {currentDocType === 'canvas' ? (
-                      <Canvas
-                        key={currentNoteId}
-                        roomName={currentNoteId}
-                        username={username}
-                        userId={user?.uid}
-                        readOnly={viewerMode || (!!viewingStudentId && viewingStudentId !== user?.uid)}
-                      />
-                    ) : currentDocType === 'base' ? (
-                      <Base
-                        key={currentNoteId}
-                        roomName={currentNoteId}
-                        readOnly={viewerMode || (!!viewingStudentId && viewingStudentId !== user?.uid)}
-                      />
-                    ) : (
-                      <CollaborativeEditor
-                        key={currentNoteId}
-                        roomName={currentNoteId}
-                        projectId={currentProjectId}
-                        username={username}
-                        userId={user?.uid}
-                        color={color}
-                        title={activeDocTitle}
-                        onTitleChange={handleUpdateTitle}
-                        onContentUpdate={stableOnContentUpdate}
-                        onEditorReady={handleEditorReady}
-                        readOnly={viewerMode || (!!viewingStudentId && viewingStudentId !== user?.uid)}
-                      />
-                    )}
-                  </>
-                ) : (
-                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
-                    Select or create a document to start editing.
-                  </div>
-                )}
-
-                {/* Slash Command + Context Menu — only render when editor is available */}
-                {editor && <SlashCommand editor={editor} />}
-                {editor && <ContextMenu editor={editor} />}
-              </>
-            )}
-          </div>
-
-          {/* Graph panel — always mounted to preserve canvas DPR state */}
-          <div
-            className="graph-panel"
-            style={{ display: showGraphPanel ? 'flex' : 'none', flexDirection: 'column' }}
-          >
-            <div className="graph-panel__header">
-              <div className="graph-panel__title">Graph View</div>
-              <div className="graph-panel__actions">
-                <button
-                  className="graph-panel__action-btn"
-                  onClick={() => setIsGraphFullscreen(true)}
-                  title="Fullscreen"
-                  type="button"
-                >
-                  <Maximize2 size={14} />
-                </button>
-                <button
-                  className="graph-panel__action-btn"
-                  onClick={() => setShowGraphPanel(false)}
-                  title="Close"
-                  type="button"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </div>
-            <Suspense fallback={<div style={{ padding: '20px', color: 'var(--text-faint)' }}>Loading Graph...</div>}>
-              <GraphView
-                activeDocId={sidebarSelectionId || currentNoteId}
-                onNavigateToDoc={(docId) => handleNavigateToDoc(docId)}
-                isVisible={showGraphPanel}
-              />
-            </Suspense>
-          </div>
-
-          {renderRightPanel()}
-        </div>
-
-        {/* Word Count Status Bar — hidden in admin dashboard mode */}
-        {showWordCount && editor && !isAdminDashboardMode && (
-          <Suspense fallback={null}>
-            <WordCountBar editor={editor} />
-          </Suspense>
-        )}
-      </div>
 
       {/* Overlays and Modals */}
       <Suspense fallback={null}>

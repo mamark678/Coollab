@@ -3,9 +3,9 @@
   flex-direction: column;
   width: 320px;
   height: 100%;
-  background-color: #0d0d1a;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e8eaf0;
+  background-color: var(--theme-surface);
+  border-left: 1px solid var(--theme-border);
+  color: var(--theme-text-primary);
   font-family: inherit;
 }
 
@@ -14,7 +14,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--theme-border);
 }
 
 .comments-panel__title {
@@ -24,13 +24,13 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--theme-text-primary);
 }
 
 .comments-panel__toggle-resolved {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--theme-text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -41,13 +41,14 @@
 }
 
 .comments-panel__toggle-resolved:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #e8eaf0;
+  background: color-mix(in srgb, var(--theme-text-primary) 5%, transparent);
+  color: var(--theme-text-primary);
 }
 
 .comments-panel__new {
   padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-right: 40px;
+  border-bottom: 1px solid var(--theme-border);
 }
 
 .comments-panel__add-btn {
@@ -72,10 +73,10 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #1a1a26;
+  background: var(--theme-background);
   padding: 12px;
   border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--theme-border);
 }
 
 .comments-panel__input-container {
@@ -88,7 +89,7 @@
   width: 100%;
   background: transparent;
   border: none;
-  color: #e8eaf0;
+  color: var(--theme-text-primary);
   font-size: 13px;
   resize: vertical;
   min-height: 40px;
@@ -117,24 +118,24 @@
 }
 
 .comments-panel__submit {
-  background: #7c6bf0;
-  color: white;
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
   border: none;
 }
 
 .comments-panel__submit:disabled {
-  background: rgba(124, 107, 240, 0.5);
+  background: color-mix(in srgb, var(--theme-primary) 50%, transparent);
   cursor: not-allowed;
 }
 
 .comments-panel__cancel {
   background: transparent;
-  color: #94a3b8;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--theme-text-secondary);
+  border: 1px solid var(--theme-border);
 }
 
 .comments-panel__cancel:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: color-mix(in srgb, var(--theme-text-primary) 5%, transparent);
 }
 
 .comments-panel__list {
@@ -148,14 +149,14 @@
 
 .comments-panel__empty {
   text-align: center;
-  color: #64748b;
+  color: var(--theme-text-secondary);
   font-size: 13px;
   margin-top: 32px;
 }
 
 .comment-card {
-  background: #1a1a26;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--theme-background);
+  border: 1px solid var(--theme-border);
   border-radius: 8px;
   padding: 12px;
   cursor: pointer;
@@ -164,7 +165,7 @@
 
 .comment-card:hover {
   border-color: rgba(124, 107, 240, 0.3);
-  background: #1e1e2d;
+  background: color-mix(in srgb, var(--theme-primary) 5%, var(--theme-background));
 }
 
 .comment-card--resolved {
@@ -208,20 +209,20 @@
 .comment-card__author {
   font-size: 12px;
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--theme-text-primary);
 }
 
 .comment-card__time {
   font-size: 10px;
-  color: #64748b;
+  color: var(--theme-text-secondary);
 }
 
 /* Resolution Confirmation Popover */
 .comment-resolve-confirm {
   margin-top: 12px;
   padding: 12px;
-  background: #2a2a3c;
-  border: 1px solid rgba(124, 107, 240, 0.5);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
@@ -229,7 +230,7 @@
 .comment-resolve-confirm p {
   margin: 0 0 10px 0;
   font-size: 12px;
-  color: #e2e8f0;
+  color: var(--theme-text-primary);
   line-height: 1.4;
 }
 
@@ -239,8 +240,8 @@
 }
 
 .comment-resolve-confirm__yes {
-  background: #7c6bf0;
-  color: white;
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
   border: none;
   padding: 4px 10px;
   border-radius: 4px;
@@ -251,8 +252,8 @@
 
 .comment-resolve-confirm__no {
   background: transparent;
-  color: #94a3b8;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--theme-text-secondary);
+  border: 1px solid var(--theme-border);
   padding: 4px 10px;
   border-radius: 4px;
   font-size: 11px;
@@ -260,7 +261,7 @@
 }
 
 .comment-resolve-confirm__yes:hover { background: #6a5acd; }
-.comment-resolve-confirm__no:hover { background: rgba(255, 255, 255, 0.05); }
+.comment-resolve-confirm__no:hover { background: color-mix(in srgb, var(--theme-text-primary) 5%, transparent); }
 
 .comment-card__actions {
   display: flex;
@@ -270,7 +271,7 @@
 .comment-card__action-btn {
   background: none;
   border: none;
-  color: #94a3b8;
+  color: var(--theme-text-secondary);
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
@@ -280,14 +281,14 @@
 }
 
 .comment-card__action-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #e8eaf0;
+  background: color-mix(in srgb, var(--theme-text-primary) 10%, transparent);
+  color: var(--theme-text-primary);
 }
 
 .comment-card__anchor {
   font-size: 12px;
   font-style: italic;
-  color: #94a3b8;
+  color: var(--theme-text-secondary);
   margin-bottom: 8px;
   padding-left: 8px;
   border-left: 2px solid rgba(124, 107, 240, 0.5);
@@ -297,7 +298,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: #cbd5e1;
+  color: var(--theme-text-primary);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -328,7 +329,7 @@
 .comment-card__replies {
   margin-top: 12px;
   padding-left: 12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid var(--theme-border);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -353,8 +354,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
+  background: color-mix(in srgb, var(--theme-text-primary) 10%, transparent);
+  color: var(--theme-text-secondary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -366,18 +367,18 @@
 .comment-reply__author {
   font-size: 12px;
   font-weight: 600;
-  color: #e8eaf0;
+  color: var(--theme-text-primary);
 }
 
 .comment-reply__time {
   font-size: 10px;
-  color: #64748b;
+  color: var(--theme-text-secondary);
 }
 
 .comment-reply__text {
   margin: 0;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--theme-text-secondary);
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -387,7 +388,7 @@
   margin-top: 8px;
   background: none;
   border: none;
-  color: #7c6bf0;
+  color: var(--theme-primary);
   font-size: 12px;
   cursor: pointer;
   padding: 0;
@@ -410,9 +411,9 @@
 
 .comment-card__reply-input {
   width: 100%;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #e8eaf0;
+  background: color-mix(in srgb, var(--theme-background) 80%, transparent);
+  border: 1px solid var(--theme-border);
+  color: var(--theme-text-primary);
   border-radius: 4px;
   padding: 6px 8px;
   font-size: 12px;
@@ -420,12 +421,12 @@
 
 .comment-card__reply-input:focus {
   outline: none;
-  border-color: rgba(124, 107, 240, 0.5);
+  border-color: var(--theme-primary);
 }
 
 .comment-card__reply-send {
-  background: #7c6bf0;
-  color: white;
+  background: var(--theme-primary);
+  color: var(--theme-on-primary);
   border: none;
   border-radius: 4px;
   width: 28px;
@@ -447,8 +448,8 @@
   left: 0;
   width: 100%;
   max-height: 150px;
-  background: #2a2a3c;
-  border: 1px solid rgba(124, 107, 240, 0.3);
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-border);
   border-radius: 6px;
   overflow-y: auto;
   z-index: 10;
@@ -463,17 +464,17 @@
 .mention-item {
   padding: 6px 12px;
   font-size: 13px;
-  color: #e8eaf0;
+  color: var(--theme-text-primary);
   cursor: pointer;
 }
 
 .mention-item:hover, .mention-item.active {
-  background: rgba(124, 107, 240, 0.2);
+  background: color-mix(in srgb, var(--theme-primary) 20%, transparent);
 }
 
 .mention-highlight {
-  color: #7c6bf0;
-  background: rgba(124, 107, 240, 0.15);
+  color: var(--theme-primary);
+  background: color-mix(in srgb, var(--theme-primary) 15%, transparent);
   padding: 0 2px;
   border-radius: 3px;
   font-weight: 500;

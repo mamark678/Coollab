@@ -97,7 +97,7 @@ export const NotificationsDropdown: React.FC = () => {
                     ) : (
                       <div 
                         className="notification-user-initials" 
-                        style={{ backgroundColor: n.fromUser.avatar || '#7c6bf0' }}
+                        style={{ backgroundColor: n.fromUser.avatar || 'var(--theme-primary)' }}
                       >
                         {n.fromUser.name.substring(0, 2).toUpperCase()}
                       </div>

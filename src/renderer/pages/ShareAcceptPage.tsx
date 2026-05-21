@@ -88,8 +88,8 @@ export const ShareAcceptPage: React.FC = () => {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'linear-gradient(168deg, #0a0a12 0%, #111118 100%)',
-    color: '#e8eaf0',
+    background: 'var(--theme-background)',
+    color: 'var(--theme-text-primary)',
     fontFamily: "'Inter', sans-serif",
     position: 'relative',
     overflow: 'hidden',
@@ -98,8 +98,8 @@ export const ShareAcceptPage: React.FC = () => {
   const cardStyle: React.CSSProperties = {
     width: 420,
     maxWidth: 'calc(100vw - 48px)',
-    background: 'linear-gradient(168deg, #16161e 0%, #111118 100%)',
-    border: '1px solid rgba(255, 255, 255, 0.08)',
+    background: 'var(--theme-surface)',
+    border: '1px solid var(--theme-border)',
     borderRadius: 16,
     padding: '48px 36px',
     display: 'flex',
@@ -107,7 +107,7 @@ export const ShareAcceptPage: React.FC = () => {
     alignItems: 'center',
     gap: 20,
     textAlign: 'center',
-    boxShadow: '0 24px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+    boxShadow: '0 24px 80px rgba(0, 0, 0, 0.25)',
     animation: 'share-dialog-in 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
     zIndex: 1,
   };
@@ -137,20 +137,20 @@ export const ShareAcceptPage: React.FC = () => {
   return (
     <div style={containerStyle}>
       {/* Background orbs */}
-      <div style={orbStyle('rgba(124, 107, 240, 1)', 300, '10%', '10%')} />
-      <div style={orbStyle('rgba(78, 161, 247, 1)', 250, '60%', '65%')} />
+      <div style={orbStyle('color-mix(in srgb, var(--theme-primary) 100%, transparent)', 300, '10%', '10%')} />
+      <div style={orbStyle('color-mix(in srgb, var(--theme-secondary) 100%, transparent)', 250, '60%', '65%')} />
 
       <div style={cardStyle}>
         {acceptState === 'loading' && (
           <>
-            <div style={{ ...iconContainerStyle, background: 'rgba(124, 107, 240, 0.15)' }}>
-              <Loader size={28} color="#9485f5" style={{ animation: 'spin 1s linear infinite' }} />
+            <div style={{ ...iconContainerStyle, background: 'color-mix(in_srgb, var(--theme-primary) 15%, transparent)' }}>
+              <Loader size={28} color="var(--theme-primary)" style={{ animation: 'spin 1s linear infinite' }} />
             </div>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
                 Joining project…
               </h2>
-              <p style={{ fontSize: 14, color: '#a0a4b8', lineHeight: 1.5 }}>
+              <p style={{ fontSize: 14, color: 'var(--theme-text-secondary)', lineHeight: 1.5 }}>
                 Processing your invitation link.
               </p>
             </div>
@@ -159,22 +159,22 @@ export const ShareAcceptPage: React.FC = () => {
 
         {acceptState === 'success' && (
           <>
-            <div style={{ ...iconContainerStyle, background: 'rgba(109, 212, 158, 0.15)' }}>
-              <CheckCircle size={28} color="#6dd49e" />
+            <div style={{ ...iconContainerStyle, background: 'color-mix(in_srgb, var(--theme-success) 15%, transparent)' }}>
+              <CheckCircle size={28} color="var(--theme-success)" />
             </div>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
                 You're in! 🎉
               </h2>
-              <p style={{ fontSize: 14, color: '#a0a4b8', lineHeight: 1.5 }}>
-                You've been added to <strong style={{ color: '#e8eaf0' }}>{projectTitle}</strong> as{' '}
+              <p style={{ fontSize: 14, color: 'var(--theme-text-secondary)', lineHeight: 1.5 }}>
+                You've been added to <strong style={{ color: 'var(--theme-text-primary)' }}>{projectTitle}</strong> as{' '}
                 {permission === 'editor' ? (
-                  <span style={{ color: '#6dd49e', fontWeight: 500 }}>an editor</span>
+                  <span style={{ color: 'var(--theme-success)', fontWeight: 500 }}>an editor</span>
                 ) : (
-                  <span style={{ color: '#4ea1f7', fontWeight: 500 }}>a viewer</span>
+                  <span style={{ color: 'var(--theme-secondary)', fontWeight: 500 }}>a viewer</span>
                 )}.
               </p>
-              <p style={{ fontSize: 12, color: '#6b6f82', marginTop: 12 }}>
+              <p style={{ fontSize: 12, color: 'var(--theme-text-secondary)', marginTop: 12 }}>
                 Redirecting to dashboard…
               </p>
             </div>
@@ -182,14 +182,14 @@ export const ShareAcceptPage: React.FC = () => {
               onClick={() => navigate('/', { replace: true })}
               style={{
                 padding: '10px 28px',
-                background: 'linear-gradient(135deg, #7c6bf0 0%, #6558d4 100%)',
+                background: 'var(--theme-primary)',
                 border: 'none',
                 borderRadius: 8,
-                color: '#fff',
+                color: 'var(--theme-on-primary)',
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: 'pointer',
-                boxShadow: '0 2px 12px rgba(124, 107, 240, 0.3)',
+                boxShadow: '0 2px 12px color-mix(in_srgb, var(--theme-primary) 30%, transparent)',
                 marginTop: 4,
               }}
             >
@@ -200,14 +200,14 @@ export const ShareAcceptPage: React.FC = () => {
 
         {acceptState === 'error' && (
           <>
-            <div style={{ ...iconContainerStyle, background: 'rgba(230, 107, 122, 0.15)' }}>
-              <XCircle size={28} color="#e66b7a" />
+            <div style={{ ...iconContainerStyle, background: 'color-mix(in_srgb, var(--theme-error) 15%, transparent)' }}>
+              <XCircle size={28} color="var(--theme-error)" />
             </div>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
                 Link Invalid
               </h2>
-              <p style={{ fontSize: 14, color: '#a0a4b8', lineHeight: 1.5 }}>
+              <p style={{ fontSize: 14, color: 'var(--theme-text-secondary)', lineHeight: 1.5 }}>
                 {errorMsg}
               </p>
             </div>
@@ -215,10 +215,10 @@ export const ShareAcceptPage: React.FC = () => {
               onClick={() => navigate('/', { replace: true })}
               style={{
                 padding: '10px 28px',
-                background: 'var(--surface-raised, #252530)',
-                border: '1px solid rgba(255, 255, 255, 0.08)',
+                background: 'var(--theme-surface)',
+                border: '1px solid var(--theme-border)',
                 borderRadius: 8,
-                color: '#e8eaf0',
+                color: 'var(--theme-text-primary)',
                 fontSize: 14,
                 fontWeight: 500,
                 cursor: 'pointer',
@@ -232,15 +232,15 @@ export const ShareAcceptPage: React.FC = () => {
 
         {acceptState === 'guest' && (
           <>
-            <div style={{ ...iconContainerStyle, background: 'rgba(78, 161, 247, 0.15)' }}>
-              <Eye size={28} color="#4ea1f7" />
+            <div style={{ ...iconContainerStyle, background: 'color-mix(in_srgb, var(--theme-secondary) 15%, transparent)' }}>
+              <Eye size={28} color="var(--theme-secondary)" />
             </div>
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>
                 View Shared Project
               </h2>
-              <p style={{ fontSize: 14, color: '#a0a4b8', lineHeight: 1.5 }}>
-                You've been invited to view <strong style={{ color: '#e8eaf0' }}>{projectTitle}</strong>.<br />
+              <p style={{ fontSize: 14, color: 'var(--theme-text-secondary)', lineHeight: 1.5 }}>
+                You've been invited to view <strong style={{ color: 'var(--theme-text-primary)' }}>{projectTitle}</strong>.<br />
                 Guests can View the document. To Edit, you must Sign In.
               </p>
             </div>
@@ -249,10 +249,10 @@ export const ShareAcceptPage: React.FC = () => {
                 onClick={() => navigate(`/guest/${projectId}`, { replace: true })}
                 style={{
                   padding: '10px 20px',
-                  background: 'var(--surface-raised, #252530)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  background: 'var(--theme-surface)',
+                  border: '1px solid var(--theme-border)',
                   borderRadius: 8,
-                  color: '#e8eaf0',
+                  color: 'var(--theme-text-primary)',
                   fontSize: 14,
                   fontWeight: 500,
                   cursor: 'pointer',
@@ -265,14 +265,14 @@ export const ShareAcceptPage: React.FC = () => {
                 onClick={() => navigate(`/login?redirect=/share/${token}`, { replace: true })}
                 style={{
                   padding: '10px 20px',
-                  background: 'linear-gradient(135deg, #7c6bf0 0%, #6558d4 100%)',
+                  background: 'var(--theme-primary)',
                   border: 'none',
                   borderRadius: 8,
-                  color: '#fff',
+                  color: 'var(--theme-on-primary)',
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: 'pointer',
-                  boxShadow: '0 2px 12px rgba(124, 107, 240, 0.3)',
+                  boxShadow: '0 2px 12px color-mix(in_srgb, var(--theme-primary) 30%, transparent)',
                   transition: 'all 0.15s',
                 }}
               >

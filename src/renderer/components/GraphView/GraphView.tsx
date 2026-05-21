@@ -361,13 +361,16 @@ export const GraphView: React.FC<GraphViewProps> = React.memo(({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
     const handler = (e: WheelEvent) => {
       e.preventDefault();
       cancelAnimationFrame(inertiaFrameRef.current);
+      
       const rect = canvas.getBoundingClientRect();
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
-      const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
+      
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
       setViewState((prev) => {
         const newZoom = Math.max(0.1, Math.min(5, prev.zoom * zoomFactor));
         const panX = cx - (cx - prev.panX) * (newZoom / prev.zoom);
@@ -375,9 +378,10 @@ export const GraphView: React.FC<GraphViewProps> = React.memo(({
         return { ...prev, zoom: newZoom, panX, panY };
       });
     };
+
     canvas.addEventListener('wheel', handler, { passive: false });
     return () => canvas.removeEventListener('wheel', handler);
-  }, []);
+  }, [simulatedNodes.length]); // Re-attach when nodes appear and canvas is rendered
 
   // ── Inertia pan loop ───────────────────────────────────────────────────
   const startInertia = useCallback(() => {

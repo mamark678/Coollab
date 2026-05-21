@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { FirebaseService, DocumentProperties, PropertyType, DocumentProperty, DocumentSchema } from '../../services/firebase';
-import { Plus, Trash2, ChevronDown, ChevronRight, Settings, Type, Hash, Calendar, CheckSquare, List, Link, Info, X, Sliders } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, ChevronRight, Settings, Type, Hash, Calendar, CheckSquare, List, Link, Info, X, Sliders, Upload, Image, Loader2 } from 'lucide-react';
 import { getBuiltInProperties, BuiltInProperties } from '../../utils/documentUtils';
+import { useBackground } from '../../context/BackgroundContext';
+import { useAppStore } from '../../store/useAppStore';
+import { compressAndConvertToBase64 } from '../../utils/imageCompression';
 import './PropertiesPanel.css';
 
 export interface PropertiesPanelProps {
@@ -24,6 +27,58 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ noteId, onClos
   const [isExpanded, setIsExpanded] = useState(true);
   const [showBuiltIn, setShowBuiltIn] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Background Context & App Store
+  const currentProjectId = useAppStore(s => s.currentProjectId);
+  const { activeProjectBackground, setProjectBackground } = useBackground();
+  const [projectOwnerId, setProjectOwnerId] = useState<string | null>(null);
+  const [uploadingBg, setUploadingBg] = useState(false);
+  const [bgError, setBgError] = useState<string | null>(null);
+  const bgFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Listen to the project note to check owner permission
+  useEffect(() => {
+    if (!currentProjectId) return;
+    const unsub = FirebaseService.getInstance().listenToNote(currentProjectId, (data) => {
+      setProjectOwnerId(data.ownerId || null);
+    });
+    return () => unsub();
+  }, [currentProjectId]);
+
+  const isProjectOwner = projectOwnerId === FirebaseService.getInstance().auth.currentUser?.uid;
+
+  const handleBgUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentProjectId) return;
+
+    setUploadingBg(true);
+    setBgError(null);
+
+    try {
+      const base64 = await compressAndConvertToBase64(file);
+      await setProjectBackground(currentProjectId, base64);
+    } catch (err: any) {
+      console.error('Error uploading project background:', err);
+      setBgError(err.message || 'Failed to compress or upload background image.');
+    } finally {
+      setUploadingBg(false);
+      if (bgFileInputRef.current) bgFileInputRef.current.value = '';
+    }
+  };
+
+  const handleBgRemove = async () => {
+    if (!currentProjectId) return;
+    setUploadingBg(true);
+    setBgError(null);
+    try {
+      await setProjectBackground(currentProjectId, null);
+    } catch (err: any) {
+      console.error('Error removing project background:', err);
+      setBgError(err.message || 'Failed to remove background image.');
+    } finally {
+      setUploadingBg(false);
+    }
+  };
 
   useEffect(() => {
     if (!noteId) return;
@@ -268,6 +323,145 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ noteId, onClos
             <Plus size={14} />
             <span>Add property</span>
           </button>
+
+          {/* Project Workspace Background Image Upload */}
+          <div style={{ 
+            marginTop: 24, 
+            paddingTop: 16, 
+            borderTop: '1px solid var(--theme-border)' 
+          }}>
+            <h4 style={{ 
+              color: 'var(--theme-text-primary)', 
+              fontSize: 12, 
+              fontWeight: 600, 
+              marginBottom: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}>
+              <Image size={14} /> Workspace Background
+            </h4>
+
+            {isProjectOwner ? (
+              <>
+                <p style={{ color: 'var(--theme-text-secondary)', marginBottom: 12, fontSize: 11, lineHeight: 1.4 }}>
+                  Customize the background image for all members in this project workspace.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ 
+                    width: '100%', 
+                    height: 90, 
+                    borderRadius: 6, 
+                    background: activeProjectBackground ? `url(${activeProjectBackground})` : 'var(--theme-surface)',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    border: '1px solid var(--theme-border)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--theme-text-secondary)',
+                    fontSize: 11,
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}>
+                    {!activeProjectBackground && <span>No Background Set</span>}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input 
+                      type="file" 
+                      ref={bgFileInputRef}
+                      onChange={handleBgUpload}
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                    />
+                    <button
+                      onClick={() => bgFileInputRef.current?.click()}
+                      disabled={uploadingBg}
+                      style={{
+                        flex: 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        padding: '6px 12px',
+                        borderRadius: 4,
+                        background: 'var(--theme-primary)',
+                        color: 'var(--theme-on-primary)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: 500,
+                        fontSize: 12,
+                        opacity: uploadingBg ? 0.6 : 1
+                      }}
+                    >
+                      {uploadingBg ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                      Upload
+                    </button>
+                    {activeProjectBackground && (
+                      <button
+                        onClick={handleBgRemove}
+                        disabled={uploadingBg}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          padding: '6px 12px',
+                          borderRadius: 4,
+                          background: 'transparent',
+                          color: 'var(--theme-danger, #ef4444)',
+                          border: '1px solid var(--theme-danger, #ef4444)',
+                          cursor: 'pointer',
+                          fontWeight: 500,
+                          fontSize: 12,
+                          opacity: uploadingBg ? 0.6 : 1
+                        }}
+                      >
+                        <Trash2 size={12} />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 10, color: 'var(--theme-text-secondary)', textAlign: 'center' }}>
+                    Compressed to max 1280x720 automatically.
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <p style={{ color: 'var(--theme-text-secondary)', fontSize: 11, lineHeight: 1.4 }}>
+                  Only the project owner can set the workspace background image.
+                </p>
+                {activeProjectBackground && (
+                  <div style={{ 
+                    width: '100%', 
+                    height: 90, 
+                    borderRadius: 6, 
+                    background: `url(${activeProjectBackground})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    border: '1px solid var(--theme-border)',
+                    marginTop: 8
+                  }} />
+                )}
+              </>
+            )}
+
+            {bgError && (
+              <div style={{ 
+                marginTop: 10, 
+                color: 'var(--theme-danger, #ef4444)', 
+                fontSize: 11,
+                background: 'color-mix(in srgb, var(--theme-danger, #ef4444) 10%, transparent)',
+                padding: '6px 10px',
+                borderRadius: 4
+              }}>
+                {bgError}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );

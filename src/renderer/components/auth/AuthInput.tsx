@@ -19,43 +19,41 @@ export const AuthInput = React.forwardRef<HTMLInputElement, AuthInputProps>(({
   const currentType = isPassword ? (showPassword ? 'text' : 'password') : type;
 
   return (
-    <div className="flex flex-col gap-1.5 w-full">
-      {/* Label */}
-      <label className="text-[12px] font-medium tracking-wide uppercase text-[#4a4d5e]">
+    <div className="flex flex-col w-full">
+      {/* Label - 11px, 0.08em tracking, 6px margin */}
+      <label className="text-[11px] font-bold tracking-[0.08em] uppercase text-white/50 mb-1.5 px-1">
         {label}
       </label>
 
-      {/* Input wrapper */}
+      {/* Input wrapper - 10px radius, 0.04 bg, 0.1 border */}
       <div
         className="relative flex items-center rounded-[10px] transition-all duration-200"
         style={{
-          background: 'rgba(255,255,255,0.04)',
+          background: `color-mix(in srgb, var(--theme-text-primary) ${0.04 * 100}%, transparent)`,
           border: isFocused
-            ? '1px solid rgba(124,107,240,0.6)'
-            : '1px solid rgba(255,255,255,0.07)',
+            ? '1px solid #7c3aed'
+            : '1px solid rgba(255,255,255,0.1)',
           boxShadow: isFocused
-            ? '0 0 0 3px rgba(124,107,240,0.1), inset 0 1px 0 rgba(255,255,255,0.03)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.02)',
+            ? '0 0 0 3px rgba(124, 58, 237, 0.2)'
+            : 'none',
         }}
       >
         {/* Left icon */}
         <div
-          className="absolute left-[13px] flex items-center pointer-events-none transition-colors duration-200"
-          style={{ color: isFocused ? '#7c6bf0' : '#4a4d5e' }}
+          className="absolute left-[16px] flex items-center pointer-events-none transition-colors duration-200"
+          style={{ color: isFocused ? '#7c3aed' : 'rgba(255,255,255,0.2)' }}
         >
-          <Icon size={15} strokeWidth={1.75} />
+          <Icon size={16} strokeWidth={2} />
         </div>
 
-        {/* Input */}
+        {/* Input - 12px 16px padding */}
         <input
           ref={ref}
           type={currentType}
-          className="w-full bg-transparent text-[#e8eaf0] text-[13.5px] py-[11px] outline-none placeholder-[#2c2c3a]"
+          className="w-full bg-transparent text-white text-[14px] py-[12px] outline-none placeholder-white/10 font-medium"
           style={{
-            paddingLeft: '38px',
-            paddingRight: isPassword ? '40px' : '14px',
-            fontFamily: 'Inter, sans-serif',
-            letterSpacing: '0.01em',
+            paddingLeft: '46px',
+            paddingRight: isPassword ? '46px' : '16px',
           }}
           onFocus={(e) => {
             setIsFocused(true);
@@ -74,20 +72,20 @@ export const AuthInput = React.forwardRef<HTMLInputElement, AuthInputProps>(({
             type="button"
             tabIndex={-1}
             onClick={() => setShowPassword((prev) => !prev)}
-            className="absolute right-[12px] flex items-center justify-center transition-colors duration-200"
-            style={{ color: showPassword ? '#7c6bf0' : '#4a4d5e' }}
+            className="absolute right-[14px] flex items-center justify-center transition-colors duration-200"
+            style={{ color: showPassword ? '#7c3aed' : 'rgba(255,255,255,0.2)' }}
             onMouseEnter={(e) =>
-              ((e.currentTarget as HTMLButtonElement).style.color = '#a0a4b8')
+              ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(255,255,255,0.5)')
             }
             onMouseLeave={(e) =>
             ((e.currentTarget as HTMLButtonElement).style.color =
-              showPassword ? '#7c6bf0' : '#4a4d5e')
+              showPassword ? '#7c3aed' : 'rgba(255,255,255,0.2)')
             }
           >
             {showPassword ? (
-              <EyeOff size={15} strokeWidth={1.75} />
+              <EyeOff size={16} strokeWidth={2} />
             ) : (
-              <Eye size={15} strokeWidth={1.75} />
+              <Eye size={16} strokeWidth={2} />
             )}
           </button>
         )}

@@ -248,6 +248,41 @@
   }
 }
 
+/* ── HTML5 Drag and Drop feedback styles ────────────────────────────────── */
+
+.dashboard__draggable-wrapper {
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.25s ease;
+  user-select: none;
+  border-radius: var(--radius-lg, 12px);
+  overflow: hidden;
+}
+
+/* Hover effect on wrapper when draggable */
+.dashboard__draggable-wrapper:hover {
+  cursor: grab;
+}
+
+.dashboard__draggable-wrapper:active {
+  cursor: grabbing;
+}
+
+.dashboard__draggable-wrapper:hover .drag-cue {
+  opacity: 0.8 !important;
+  color: var(--accent-primary, #7c6bf0);
+}
+
+.dashboard__draggable-wrapper.is-dragging {
+  opacity: 0.3;
+  transform: scale(0.96);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.dashboard__draggable-wrapper.is-drag-over {
+  transform: scale(1.04) translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
 /* ── Empty State ───────────────────────────────────────────────────────── */
 
 .dashboard__empty {
@@ -363,30 +398,109 @@
 }
 
 .dashboard__user-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #e2e8f0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary, #fff);
+  letter-spacing: -0.01em;
 }
 
+.dashboard__user-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+/* Glowing academic ring borders on avatar */
 .dashboard__avatar {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: var(--accent-gradient);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid transparent;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.dashboard__avatar--instructor {
+  border-color: #a855f7;
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.35);
+}
+
+.dashboard__avatar--student {
+  border-color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
+}
+
+.dashboard__avatar--collaborator {
+  border-color: #6366f1;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
 }
 
 .dashboard__avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Sleek pill role badges */
+.dashboard__role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.dashboard__role-badge--instructor {
+  background: rgba(168, 85, 247, 0.1);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+.dashboard__role-badge--student {
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.dashboard__role-badge--collaborator {
+  background: rgba(99, 102, 241, 0.1);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.dashboard__role-badge-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dashboard__role-badge--instructor .dashboard__role-badge-dot {
+  background-color: #a855f7;
+  box-shadow: 0 0 6px #a855f7;
+}
+
+.dashboard__role-badge--student .dashboard__role-badge-dot {
+  background-color: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.dashboard__role-badge--collaborator .dashboard__role-badge-dot {
+  background-color: #6366f1;
+  box-shadow: 0 0 6px #6366f1;
 }
 
 .dashboard__nav-actions {

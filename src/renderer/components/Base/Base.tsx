@@ -561,7 +561,7 @@ export const Base: React.FC<BaseProps> = ({ roomName, readOnly = false }) => {
                       onKeyDown={e => { if (e.key === 'Enter') handleAddColumn(); if (e.key === 'Escape') setShowAddColumn(false); }}
                       autoFocus className="title-edit-input" style={{ fontSize: 13 }} />
                     <select value={newColType} onChange={e => setNewColType(e.target.value as CustomColumnType)}
-                      style={{ background: '#2e2e4a', border: '1px solid #3e3e5a', borderRadius: 4, color: '#fff', padding: '6px 8px', fontSize: 13, outline: 'none' }}>
+                      style={{ background: '#2e2e4a', border: '1px solid #3e3e5a', borderRadius: 4, color: 'var(--theme-text-primary)', padding: '6px 8px', fontSize: 13, outline: 'none' }}>
                       <option value="text">Text</option>
                       <option value="number">Number</option>
                       <option value="date">Date</option>
@@ -569,12 +569,12 @@ export const Base: React.FC<BaseProps> = ({ roomName, readOnly = false }) => {
                       <option value="select">Select</option>
                     </select>
                     <button onClick={handleAddColumn} disabled={!newColName.trim()}
-                      style={{ padding: '6px 12px', background: newColName.trim() ? '#7c3aed' : '#2e2e4a', border: 'none', borderRadius: 6, color: '#fff', cursor: newColName.trim() ? 'pointer' : 'default', fontSize: 13, fontWeight: 600 }}>
+                      style={{ padding: '6px 12px', background: newColName.trim() ? '#7c3aed' : '#2e2e4a', border: 'none', borderRadius: 6, color: 'var(--theme-text-primary)', cursor: newColName.trim() ? 'pointer' : 'default', fontSize: 13, fontWeight: 600 }}>
                       Add Column
                     </button>
                   </div>
                   {customColumns.length > 0 && (
-                    <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', padding: '4px 0' }}>
+                    <div style={{ borderTop: '1px  solid var(--theme-border)', padding: '4px 0' }}>
                       <div className="section-label">Existing Columns</div>
                       {customColumns.map(c => (
                         <div key={c.id} className="column-item">
@@ -590,7 +590,7 @@ export const Base: React.FC<BaseProps> = ({ roomName, readOnly = false }) => {
           )}
           {!readOnly && selectedRows.size > 0 && (
             <button className="action-btn" onClick={handleDeleteSelected}
-              style={{ borderColor: '#ef4444', color: '#ef4444' }}>
+              style={{ borderColor: 'var(--theme-error)', color: 'var(--theme-error)' }}>
               <X size={14} /> Delete Selected ({selectedRows.size})
             </button>
           )}
@@ -614,7 +614,7 @@ export const Base: React.FC<BaseProps> = ({ roomName, readOnly = false }) => {
                       <input type="checkbox"
                         checked={processedNotes.length > 0 && selectedRows.size === processedNotes.length}
                         onChange={toggleSelectAll}
-                        style={{ accentColor: '#7c3aed', width: 15, height: 15, cursor: 'pointer' }} />
+                        style={{ accentColor: 'var(--theme-primary)', width: 15, height: 15, cursor: 'pointer' }} />
                     </th>
                   )}
                   <th>File Name</th>
@@ -660,7 +660,7 @@ export const Base: React.FC<BaseProps> = ({ roomName, readOnly = false }) => {
                           <input type="checkbox"
                             checked={selectedRows.has(note.id)}
                             onChange={() => toggleRowSelection(note.id)}
-                            style={{ accentColor: '#7c3aed', width: 15, height: 15, cursor: 'pointer' }} />
+                            style={{ accentColor: 'var(--theme-primary)', width: 15, height: 15, cursor: 'pointer' }} />
                         </td>
                       )}
                       <td className="cell-title">
@@ -707,7 +707,7 @@ export const Base: React.FC<BaseProps> = ({ roomName, readOnly = false }) => {
                             <td key={col.id} className="cell-editable" style={{ textAlign: 'center' }}>
                               <input type="checkbox" checked={!!cellVal} disabled={readOnly}
                                 onChange={e => handleCellEdit(note.id, col.id, e.target.checked)}
-                                style={{ accentColor: '#7c3aed', width: 16, height: 16, cursor: readOnly ? 'default' : 'pointer' }} />
+                                style={{ accentColor: 'var(--theme-primary)', width: 16, height: 16, cursor: readOnly ? 'default' : 'pointer' }} />
                             </td>
                           );
                         }

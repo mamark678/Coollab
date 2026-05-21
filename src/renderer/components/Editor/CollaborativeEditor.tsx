@@ -45,6 +45,7 @@ export interface CollaborativeEditorProps {
   title?: string;
   onTitleChange?: (title: string) => void;
   onEditorReady?: (editor: Editor) => void;
+  onSyncStatus?: (synced: boolean) => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,6 +129,7 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
   readOnly = false,
 }) => {
   const yjsService = YjsService.getInstance();
+  if (!yjsService.isInitialized()) return null;
   const yjsDoc = yjsService.getDoc();
   const sharedTitle = yjsDoc.getText('title');
 
@@ -136,58 +138,25 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
   useEffect(() => {
     const handleYTitleUpdate = (event: any) => {
       if (event.transaction.origin === 'title-sync') return;
-      const currentYTitle = sharedTitle.toString().trim();
-      const localTitle = title?.trim() || '';
-      
-      const isDefault = (t: string) => ['Untitled Document', 'New Document', ''].includes(t);
-
-      if (currentYTitle !== localTitle && currentYTitle.length > 0) {
-        if (isDefault(currentYTitle) && !isDefault(localTitle)) {
-          yjsDoc.transact(() => {
-            sharedTitle.delete(0, sharedTitle.length);
-            sharedTitle.insert(0, title || '');
-          }, 'title-sync');
-        } else {
-          onTitleChange?.(currentYTitle);
-        }
-      }
+      const currentYTitle = sharedTitle.toString();
+      onTitleChange?.(currentYTitle);
     };
 
     sharedTitle.observe(handleYTitleUpdate);
 
-    const currentY = sharedTitle.toString().trim();
-    const isDefault = (t: string) => ['Untitled Document', 'New Document', ''].includes(t);
-    const localTitle = title?.trim() || '';
-
-    if (isDefault(currentY) && !isDefault(localTitle)) {
-      yjsDoc.transact(() => {
-        if (sharedTitle.length > 0) {
-          sharedTitle.delete(0, sharedTitle.length);
-        }
-        sharedTitle.insert(0, title || '');
-      }, 'title-sync');
-    } else if (currentY && !title) {
+    const currentY = sharedTitle.toString();
+    if (currentY && !title) {
       onTitleChange?.(currentY);
     }
 
     return () => sharedTitle.unobserve(handleYTitleUpdate);
   }, [sharedTitle, onTitleChange, title, yjsDoc]);
 
-  useEffect(() => {
-    const currentY = sharedTitle.toString();
-    if (title !== undefined && title !== currentY) {
-      yjsDoc.transact(() => {
-        if (sharedTitle.length > 0) {
-          sharedTitle.delete(0, sharedTitle.length);
-        }
-        if (title.length > 0) {
-          sharedTitle.insert(0, title);
-        }
-      }, 'title-sync');
-    }
-  }, [title, sharedTitle, yjsDoc]);
-
   const handleTitleChangeLocal = (newTitle: string) => {
+    yjsDoc.transact(() => {
+      sharedTitle.delete(0, sharedTitle.length);
+      if (newTitle) sharedTitle.insert(0, newTitle);
+    }, 'title-sync');
     onTitleChange?.(newTitle);
   };
 
@@ -201,6 +170,7 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
       provider,
       user: { id: userId, name: username, color },
       render(user) {
+        console.log('[Cursor] rendering cursor for:', user);
         const cursor = document.createElement('span');
         cursor.classList.add('collaboration-cursor__caret');
         cursor.setAttribute('style', `border-color: ${user.color}`);
@@ -612,18 +582,42 @@ const ContinuousEditorInner: React.FC<ContinuousEditorInnerProps> = ({
             background: 'transparent',
             border: 'none',
             outline: 'none',
-            fontSize: '32px',
+            fontSize: '48px',
             fontWeight: 800,
-            color: 'var(--text-primary)',
-            padding: '20px 0 10px',
+            color: 'var(--theme-text-primary)',
+            padding: '0',
             resize: 'none',
             overflow: 'hidden',
             lineHeight: '1.2',
-            marginBottom: '10px',
+            marginBottom: '32px',
             fontFamily: 'inherit',
           }}
         />
-        <EditorContent editor={editor} />
+        
+        <div style={{ marginBottom: '32px', position: 'relative' }}>
+          <EditorContent editor={editor} className="coollab-editor-content" />
+        </div>
+
+        {/* Tiptap Placeholder Block - Only show if editor is empty or as a design element */}
+        {!editor.getText().trim() && (
+          <div style={{
+            border: '1px dashed rgba(255,255,255,0.15)',
+            borderRadius: '8px',
+            padding: '32px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: `color-mix(in srgb, var(--theme-text-primary) ${0.02 * 100}%, transparent)`
+          }}>
+            <span style={{ 
+              color: 'var(--theme-text-secondary)', 
+              fontSize: '14px', 
+              fontStyle: 'italic' 
+            }}>
+              Tiptap editor engine active... Start typing or use / for commands.
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );

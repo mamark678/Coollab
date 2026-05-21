@@ -7,7 +7,10 @@ import {
   ChevronUp, 
   Circle,
   Zap,
-  Info
+  Info,
+  CheckCircle2,
+  Play,
+  ArrowRight
 } from 'lucide-react';
 import { Activity } from '../../services/activity';
 
@@ -15,320 +18,307 @@ interface StudentActivityDisplayProps {
   projectId: string;
 }
 
+const getInstructionText = (instr: any): string => {
+  if (!instr) return '';
+  if (typeof instr === 'string') return instr;
+  if (typeof instr === 'object') {
+    if (typeof instr.instruction === 'string') return instr.instruction;
+    if (typeof instr.text === 'string') return instr.text;
+    if (typeof instr.description === 'string') return instr.description;
+    if (typeof instr.step === 'string') return instr.step;
+    if (typeof instr.step_text === 'string') return instr.step_text;
+    if (typeof instr.content === 'string') return instr.content;
+    
+    for (const key of Object.keys(instr)) {
+      if (typeof instr[key] === 'string' && !['id', 'type', 'status', 'step_number', 'stepNumber'].includes(key)) {
+        return instr[key];
+      }
+    }
+    
+    try {
+      return JSON.stringify(instr);
+    } catch (e) {
+      return '';
+    }
+  }
+  return String(instr);
+};
+
+const findPromptsInObject = (obj: any, visited = new Set()): string[] => {
+  if (!obj || typeof obj !== 'object') return [];
+  if (visited.has(obj)) return [];
+  visited.add(obj);
+
+  const results: string[] = [];
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    if (typeof val === 'string' && val.trim().length > 0) {
+      const kLower = key.toLowerCase();
+      if (kLower.includes('prompt') || kLower.includes('instruction') || kLower.includes('description')) {
+        if (kLower !== 'assignedby' && kLower !== 'type' && kLower !== 'status') {
+          results.push(val.trim());
+        }
+      }
+    } else if (Array.isArray(val)) {
+      for (const item of val) {
+        if (typeof item === 'string' && item.trim().length > 0) {
+          const kLower = key.toLowerCase();
+          if (kLower.includes('prompt') || kLower.includes('instruction') || kLower.includes('description') || kLower.includes('step')) {
+            results.push(item.trim());
+          }
+        } else if (item && typeof item === 'object') {
+          results.push(...findPromptsInObject(item, visited));
+        }
+      }
+    } else if (val && typeof val === 'object') {
+      results.push(...findPromptsInObject(val, visited));
+    }
+  }
+  return results;
+};
+
+const getDisplayInstructions = (activity: any): any[] => {
+  const rawInstructions = activity.instructions || [];
+  
+  // 1. Try to get valid instructions from instructions array
+  const validInstructions = rawInstructions
+    .map((inst: any) => getInstructionText(inst).trim())
+    .filter((inst: string) => inst.length > 0);
+
+  if (validInstructions.length > 0) {
+    return validInstructions;
+  }
+
+  // 2. Try to get description if it's non-empty and not just a default/fallback
+  if (activity.description && activity.description.trim().length > 0 && activity.description.trim() !== 'Follow the activity details.') {
+    return [activity.description.trim()];
+  }
+
+  // 3. Try to extract prompts from workspaceData
+  const prompts: string[] = [];
+  if (activity.workspaceData) {
+    const ws = activity.workspaceData;
+    // Check document
+    if (ws.document?.prompt && ws.document.prompt.trim().length > 0) {
+      prompts.push(ws.document.prompt.trim());
+    }
+    // Check graph
+    if (ws.graph?.prompt && ws.graph.prompt.trim().length > 0) {
+      prompts.push(ws.graph.prompt.trim());
+    }
+    // Check canvas
+    if (ws.canvas?.prompt && ws.canvas.prompt.trim().length > 0) {
+      prompts.push(ws.canvas.prompt.trim());
+    }
+    // Check database
+    if (ws.database?.enabled) {
+      const fields = (ws.database.fields || []).map((f: any) => `${f.name} (${f.type})`).join(', ');
+      if (fields) {
+        prompts.push(`Create database fields: ${fields}`);
+      }
+    }
+  }
+
+  if (prompts.length > 0) {
+    return prompts;
+  }
+
+  // 4. Try deep recursive search for any prompt or description or instruction keys in the activity object
+  const deepPrompts = findPromptsInObject(activity);
+  const uniqueDeepPrompts = Array.from(new Set(deepPrompts))
+    .filter(p => p !== 'Follow the activity details.' && p !== activity.title);
+  
+  if (uniqueDeepPrompts.length > 0) {
+    return uniqueDeepPrompts;
+  }
+
+  // 5. Check taskData/discussionData fallbacks explicitly
+  if (activity.taskData) {
+    const td = activity.taskData;
+    if (td.description) {
+      return [td.description];
+    }
+    if (td.subtasks && td.subtasks.length > 0) {
+      return td.subtasks.map((st: any) => st.text);
+    }
+  }
+
+  if (activity.discussionData) {
+    const dd = activity.discussionData;
+    if (dd.prompt) {
+      return [dd.prompt];
+    }
+  }
+
+  // 6. Fallback based on workspace_zone
+  if (activity.workspace_zone) {
+    const zone = String(activity.workspace_zone).toLowerCase();
+    if (zone === 'document') {
+      return ['Draft the requested business plan or document in the workspace.'];
+    }
+    if (zone === 'canvas') {
+      return ['Map out your ideas and design elements on the canvas workspace.'];
+    }
+    if (zone === 'graph' || zone === 'folder') {
+      return ['Establish concept links and organize your documents in the workspace.'];
+    }
+    if (zone === 'base' || zone === 'database') {
+      return ['Populate the base/database table with structured workspace columns and rows.'];
+    }
+  }
+
+  // Last resort
+  return ['Follow the activity details.'];
+};
+
 export const StudentActivityDisplay: React.FC<StudentActivityDisplayProps> = ({ projectId }) => {
   const [activityData, setActivityData] = useState<{ activity: Activity, status: string, startedAt: number | null } | null>(null);
-  const [timer, setTimer] = useState<{ remaining: number; total: number; isLate?: boolean } | null>(null);
   const [isMinimized, setIsMinimized] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     const handleActivityChange = (e: any) => {
       setActivityData(e.detail);
-      setTimer(null); // Reset timer when activity changes
       setShowConfirm(false);
     };
 
-    const handleTimerTick = (e: any) => {
-      setTimer(e.detail);
-    };
-
     window.addEventListener('current-activity-changed', handleActivityChange);
-    window.addEventListener('activity-timer-tick', handleTimerTick);
 
     return () => {
       window.removeEventListener('current-activity-changed', handleActivityChange);
-      window.removeEventListener('activity-timer-tick', handleTimerTick);
     };
   }, []);
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const getTimerColor = () => {
-    if (!timer) return '#7c3aed';
-    if (timer.isLate) return '#ef4444';
-    const percent = (timer.remaining / timer.total) * 100;
-    if (percent < 20) return '#ef4444';
-    if (percent < 50) return '#f59e0b';
-    return '#7c3aed';
-  };
-
-  if (!activityData) {
-    return (
-      <AnimatePresence>
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          className="student-activity-finished"
-          style={{
-            position: 'fixed',
-            bottom: '24px',
-            right: '24px',
-            background: 'rgba(13, 13, 26, 0.95)',
-            border: '1px solid rgba(110, 212, 158, 0.3)',
-            borderRadius: '12px',
-            padding: '16px 24px',
-            color: '#fff',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            zIndex: 1000,
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-            backdropFilter: 'blur(8px)'
-          }}
-        >
-          <Trophy size={24} color="#6dd49e" />
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '15px' }}>All Done!</div>
-            <div style={{ fontSize: '13px', color: '#6dd49e' }}>You've completed all tasks. Well done!</div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
-    );
-  }
+  if (!activityData) return null;
 
   const { activity, status } = activityData;
 
-  // Pending State (Full Screen Lobby)
-  if (status === 'pending') {
-    return (
-      <div style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(13, 13, 26, 0.98)',
-        zIndex: 9999,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#fff',
-        padding: '20px'
-      }}>
-        <div style={{ maxWidth: '600px', width: '100%', textAlign: 'center' }}>
-          <Trophy size={64} color="#7c6bf0" style={{ marginBottom: '24px' }} />
-          <h1 style={{ fontSize: '36px', marginBottom: '16px', fontWeight: 800 }}>{activity.title}</h1>
-          <div style={{ fontSize: '18px', color: '#94a3b8', lineHeight: 1.6, marginBottom: '40px' }}>
-            <p style={{ marginBottom: '16px' }}>{activity.description}</p>
-            <p style={{ fontWeight: 'bold', color: '#cbd5e1' }}>
-              Read the instructions carefully. Be aware of the timer. After you're done, submit your work.
-            </p>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', marginBottom: '40px', color: '#64748b' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Clock size={20} />
-              <span>{Math.floor((activity.timer_config?.duration_seconds || 0) / 60)} minutes</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Zap size={20} />
-              <span>{activity.points} points</span>
-            </div>
-          </div>
+  // Render pending state ONLY for workspace activities, hide others
+  if (status === 'pending' && activity.type !== 'workspace') return null;
 
-          <button 
-            onClick={() => window.dispatchEvent(new Event('start-current-activity'))}
-            style={{
-              background: '#7c6bf0',
-              color: '#fff',
-              border: 'none',
-              padding: '16px 48px',
-              borderRadius: '12px',
-              fontSize: '20px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              boxShadow: '0 8px 32px rgba(124, 107, 240, 0.4)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-          >
-            Start Activity
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Hide the floating widget for activities that have their own dedicated full-screen players.
+  // These activities manage their own UI, timer, and completion flow.
+  const hasDedicatedPlayer = ['quiz', 'gizmo', 'flashcard'].includes(activity.type);
+  if (hasDedicatedPlayer) return null;
 
-  // In Progress State (Floating Display)
+  const isLocked = status === 'pending';
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 100 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`student-activity-card ${isMinimized ? 'minimized' : ''}`}
-      style={{
-        position: 'fixed',
-        bottom: '24px',
-        right: '24px',
-        width: isMinimized ? '240px' : (timer?.isLate ? '440px' : '360px'),
-        background: 'rgba(13, 13, 26, 0.95)',
-        border: '1px solid rgba(124, 107, 240, 0.3)',
-        borderRadius: '16px',
-        color: '#fff',
-        zIndex: 1000,
-        boxShadow: '0 12px 48px rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(12px)',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-        maxHeight: '80vh'
-      }}
+      className="fixed bottom-8 right-8 z-[1000] flex flex-col"
+      style={{ width: isMinimized ? '260px' : '400px' }}
     >
-      {/* Header */}
-      <div 
-        style={{ 
-          padding: '12px 16px', 
-          background: 'rgba(124, 107, 240, 0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          borderBottom: isMinimized ? 'none' : '1px solid rgba(255, 255, 255, 0.05)',
-          flexShrink: 0
-        }}
-        onClick={() => setIsMinimized(!isMinimized)}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
-          <Zap size={18} color={timer?.isLate ? '#ef4444' : '#7c6bf0'} style={{ flexShrink: 0 }} />
-          <span style={{ 
-            fontWeight: 700, 
-            fontSize: '14px', 
-            letterSpacing: '0.5px', 
-            textTransform: 'uppercase', 
-            color: timer?.isLate ? '#ef4444' : '#fff',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis'
-          }}>
-            {timer?.isLate ? (isMinimized ? "TIME'S UP" : "TIME'S UP — Late submissions accepted") : "Current Task"}
-          </span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-          {timer?.isLate && (
-            <div style={{
-              background: '#ef4444',
-              color: '#fff',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              fontSize: '10px',
-              fontWeight: 800,
-              letterSpacing: '0.5px'
-            }}>LATE</div>
-          )}
-          {timer && (
-            <motion.div 
-              animate={timer.isLate ? { 
-                boxShadow: ['0 0 0px rgba(239, 68, 68, 0)', '0 0 12px rgba(239, 68, 68, 0.8)', '0 0 0px rgba(239, 68, 68, 0)'] 
-              } : {}}
-              transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-              style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '4px', 
-              background: `${getTimerColor()}22`,
-              color: getTimerColor(),
-              padding: '2px 8px',
-              borderRadius: '20px',
-              fontSize: '13px',
-              fontWeight: 800
-            }}>
-              <Clock size={14} />
-              {formatTime(timer.remaining)}
-            </motion.div>
-          )}
-          {isMinimized ? <ChevronUp size={18} color="#64748b" /> : <ChevronDown size={18} color="#64748b" />}
-        </div>
-      </div>
+      <div className="bg-[color-mix(in_srgb,var(--theme-surface)_95%,transparent)] backdrop-blur-2xl border border-[var(--theme-border)] rounded-[32px] overflow-hidden shadow-[0_32px_64px_rgba(0,0,0,0.3)] flex flex-col" style={{ maxHeight: 'calc(100vh - 64px)' }}>
+        {/* Header Toggle */}
+        <div 
+          onClick={() => setIsMinimized(!isMinimized)}
+          className={`shrink-0 px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-[color-mix(in_srgb,var(--theme-text-primary)_2%,transparent)] transition-colors ${!isMinimized ? 'border-b border-[var(--theme-border)]' : ''}`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-inner shadow-[color-mix(in_srgb,var(--theme-text-primary)_5%,transparent)] bg-[color-mix(in_srgb,var(--theme-primary)_20%,transparent)] text-[var(--theme-primary)]">
+              <Zap size={16} className="fill-[color-mix(in_srgb,var(--theme-primary)_20%,transparent)]" />
+            </div>
+            <span className="text-[11px] text-[var(--theme-text-secondary)] opacity-85 tracking-[0.1em] truncate">
+              Active Objective
+            </span>
+          </div>
 
-      <AnimatePresence>
-        {!isMinimized && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            style={{ overflowY: 'auto' }}
-          >
-            <div style={{ padding: '16px' }}>
-              <div style={{ marginBottom: '16px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 8px 0', color: '#fff' }}>{activity.title}</h3>
-                <p style={{ fontSize: '14px', color: '#94a3b8', margin: 0, lineHeight: 1.5 }}>{activity.description}</p>
+          <div className="flex items-center gap-4 shrink-0">
+            {isMinimized ? <ChevronUp size={18} className="text-[var(--theme-text-secondary)] opacity-40" /> : <ChevronDown size={18} className="text-[var(--theme-text-secondary)] opacity-40" />}
+          </div>
+        </div>
+
+        <AnimatePresence>
+          {!isMinimized && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-y-auto custom-scrollbar" style={{ padding: '2rem' }}>
+              <div className="mb-8">
+                <h3 className="text-xl font-black text-[var(--theme-text-primary)] tracking-tight mb-2" style={{ fontFamily: 'Outfit, sans-serif' }}>{activity.title}</h3>
+                <p className="text-[14px] text-[var(--theme-text-secondary)] leading-relaxed font-medium">{activity.description}</p>
               </div>
 
-              {/* Instructions as a unified block */}
-              <div style={{ background: 'rgba(255, 255, 255, 0.03)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-                <span style={{ display: 'block', fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '12px' }}>
-                  Instructions
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {(activity.instructions || []).map((instruction, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '10px' }}>
-                      <Circle size={14} color="#7c6bf0" style={{ marginTop: '3px', flexShrink: 0 }} />
-                      <span style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: 1.5 }}>{instruction}</span>
+              <div className="space-y-3 mb-8">
+                <span className="text-[10px] font-black text-[var(--theme-text-secondary)] opacity-40 uppercase tracking-[0.2em] mb-4 block">Task Instructions</span>
+                {getDisplayInstructions(activity).map((instr, idx) => (
+                  <div key={idx} className="flex gap-4 p-4 rounded-2xl bg-[color-mix(in_srgb,var(--theme-text-primary)_2%,transparent)] border border-[var(--theme-border)] hover:bg-[color-mix(in_srgb,var(--theme-text-primary)_4%,transparent)] transition-all">
+                    <div className="w-5 h-5 rounded-full bg-[color-mix(in_srgb,var(--theme-primary)_10%,transparent)] border border-[color-mix(in_srgb,var(--theme-primary)_30%,transparent)] flex items-center justify-center shrink-0 mt-0.5 text-[10px] font-black text-[var(--theme-primary)]">{idx + 1}</div>
+                    <p className="text-[13px] text-[var(--theme-text-primary)] opacity-80 leading-relaxed font-medium">{getInstructionText(instr)}</p>
+                  </div>
+                ))}
+              </div>
+
+              {activity.type === 'task' && activity.taskData && (
+                <div className="space-y-3 mb-8">
+                  <span className="text-[10px] font-black text-[var(--theme-text-secondary)] opacity-40 uppercase tracking-[0.2em] mb-4 block">Subtasks</span>
+                  {activity.taskData.subtasks.map((st: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-3 p-4 rounded-2xl bg-[color-mix(in_srgb,var(--theme-text-primary)_2%,transparent)] border border-[var(--theme-border)]">
+                      <div className="mt-0.5"><Circle size={14} className="text-[var(--theme-success)]" /></div>
+                      <p className="text-[13px] text-[var(--theme-text-primary)] opacity-80 leading-relaxed font-medium">{st.text}</p>
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
-                <Info size={14} />
-                {timer?.isLate ? (
-                  <span style={{ color: '#ef4444' }}>
-                    Submitted late — {Math.max(0, activity.points - (activity.timer_config?.late_penalty !== undefined ? activity.timer_config.late_penalty : activity.points))} points earned
-                  </span>
-                ) : (
-                  <span>Earning {activity.points} points upon completion</span>
-                )}
-              </div>
+              {activity.type === 'discussion' && activity.discussionData && (
+                <div className="space-y-4 mb-8">
+                  <div className="rounded-lg border" style={{ padding: '1rem 1.25rem', backgroundColor: 'color-mix(in srgb, var(--theme-primary) 8%, transparent)', borderColor: 'color-mix(in srgb, var(--theme-primary) 25%, transparent)' }}>
+                    <span className="text-[11px] text-[var(--theme-text-secondary)] tracking-[0.1em] mb-3 block">Discussion Prompt</span>
+                    <p className="text-[14px] leading-[1.7] text-[var(--theme-text-primary)] opacity-85">{activity.discussionData.prompt}</p>
+                  </div>
+                  {activity.discussionData.guidingQuestions?.length > 0 && (
+                    <div className="mt-4">
+                      <span className="text-[11px] text-[var(--theme-text-secondary)] tracking-[0.1em] mb-3 block">Guiding Questions</span>
+                      <div className="flex flex-col" style={{ paddingLeft: '1.25rem', gap: '12px' }}>
+                        {activity.discussionData.guidingQuestions.map((q: string, idx: number) => (
+                          <div key={idx} className="flex text-[13px] leading-[1.6] text-[var(--theme-text-primary)] opacity-80" style={{ gap: '8px' }}>
+                            <span className="text-[var(--theme-text-secondary)] shrink-0">•</span>
+                            <span>{q}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
-              {/* Submit Section */}
               {showConfirm ? (
-                <div style={{ background: 'rgba(124, 107, 240, 0.1)', padding: '16px', borderRadius: '12px', border: '1px solid rgba(124, 107, 240, 0.2)' }}>
-                  <h3 style={{ margin: '0 0 16px 0', fontSize: '14px', textAlign: 'center', color: '#fff' }}>Are you sure you want to submit your work?</h3>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                <div className="space-y-4 p-6 bg-[color-mix(in_srgb,var(--theme-primary)_5%,transparent)] border border-[color-mix(in_srgb,var(--theme-primary)_20%,transparent)] rounded-3xl">
+                  <p className="text-center text-sm font-black text-[var(--theme-text-primary)]">Finalize and submit sequence?</p>
+                  <div className="flex gap-3">
                     <button 
-                      style={{ background: '#7c6bf0', color: '#fff', padding: '10px', border: 'none', borderRadius: '8px', flex: 1, cursor: 'pointer', fontWeight: 800 }} 
-                      onClick={() => { 
-                        setShowConfirm(false); 
-                        window.dispatchEvent(new Event('complete-current-activity')); 
-                      }}
+                      onClick={() => { setShowConfirm(false); window.dispatchEvent(new Event('complete-current-activity')); }}
+                      className="flex-1 py-4 bg-[var(--theme-primary)] text-[var(--theme-on-primary)] font-black text-sm rounded-2xl shadow-lg shadow-[var(--theme-primary)]/20 hover:opacity-90 transition-all"
                     >
-                      Yes, Submit
+                      Confirm
                     </button>
-                    <button 
-                      style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', padding: '10px', borderRadius: '8px', flex: 1, cursor: 'pointer', fontWeight: 600 }} 
-                      onClick={() => setShowConfirm(false)}
-                    >
+                    <button onClick={() => setShowConfirm(false)} className="flex-1 py-4 bg-[color-mix(in_srgb,var(--theme-text-primary)_5%,transparent)] text-[var(--theme-text-secondary)] opacity-60 font-black text-sm rounded-2xl hover:opacity-100 transition-all">
                       Cancel
                     </button>
                   </div>
                 </div>
               ) : (
                 <button 
-                  style={{ 
-                    width: '100%', 
-                    background: '#6dd49e', 
-                    color: '#000', 
-                    border: 'none', 
-                    padding: '14px', 
-                    borderRadius: '12px', 
-                    fontWeight: 800, 
-                    fontSize: '15px',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(109, 212, 158, 0.3)'
-                  }} 
-                  onClick={() => setShowConfirm(true)}
+                  onClick={() => {
+                    if (isLocked) {
+                      window.dispatchEvent(new Event('start-current-activity'));
+                    } else {
+                      setShowConfirm(true);
+                    }
+                  }}
+                  className="w-full bg-[var(--theme-primary)] text-[var(--theme-on-primary)] text-[14px] font-semibold rounded-lg transition-all flex items-center justify-center cursor-pointer hover:opacity-90"
+                  style={{ padding: '12px 24px', gap: '8px' }}
                 >
-                  Submit Work
+                  <CheckCircle2 size={18} className="text-[var(--theme-on-primary)] shrink-0" /> 
+                  {isLocked ? "Start Activity" : "Submit"}
                 </button>
               )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </motion.div>
   );
 };
+import { AlertTriangle } from 'lucide-react';

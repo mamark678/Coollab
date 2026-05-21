@@ -53,8 +53,27 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
       setLinks(data);
       if (projectDoc) {
         setProjectType(projectDoc.type || null);
-        setStudentInviteCode(projectDoc.studentInviteCode || null);
-        setAdminInviteCode(projectDoc.adminInviteCode || null);
+        
+        let sCode = projectDoc.studentInviteCode;
+        let aCode = projectDoc.adminInviteCode;
+        
+        // Auto-generate if missing (for legacy projects)
+        if (!sCode || !aCode) {
+          const shareService = ShareService.getInstance();
+          const updates: any = {};
+          if (!sCode) {
+            sCode = shareService.generateToken();
+            updates.studentInviteCode = sCode;
+          }
+          if (!aCode) {
+            aCode = shareService.generateToken();
+            updates.adminInviteCode = aCode;
+          }
+          await FirebaseService.getInstance().saveNote(projectId, updates);
+        }
+
+        setStudentInviteCode(sCode || null);
+        setAdminInviteCode(aCode || null);
       }
     } catch (err) {
       console.error('[ShareDialog] Failed to load links:', err);
@@ -206,20 +225,20 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               <span className="loading-spinner" />
               Loading share details…
             </div>
-          ) : projectType === 'activity' ? (
+          ) : (projectType === 'activity' || projectType === 'project') ? (
             <div className="share-dialog__activity-codes">
               <div className="share-dialog__links-header" style={{ marginTop: 0 }}>
-                Activity Project Codes
+                Project Invite Codes
               </div>
-              <p style={{ fontSize: 13, color: '#a0a4b8', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: 'var(--theme-text-secondary)', marginBottom: 16 }}>
                 Share these codes with participants. Their role is automatically assigned based on the code they use.
               </p>
               
               <div className="share-link-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8, padding: 16 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4ea1f7', fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--theme-primary)', fontWeight: 600 }}>
                   <Eye size={16} /> Student Invite Code
                 </div>
-                <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: 6 }}>
+                <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', background: `color-mix(in srgb, var(--theme-background) ${0.2 * 100}%, transparent)`, padding: '8px 12px', borderRadius: 6 }}>
                   <span style={{ fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>{studentInviteCode}</span>
                   <button
                     className={`share-link-row__btn share-link-row__btn--copy ${copiedToken === studentInviteCode ? 'share-link-row__btn--copied' : ''}`}
@@ -233,10 +252,10 @@ export const ShareDialog: React.FC<ShareDialogProps> = ({
               </div>
 
               <div className="share-link-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 8, padding: 16, marginTop: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#7c6bf0', fontWeight: 600 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--theme-secondary)', fontWeight: 600 }}>
                   <Pencil size={16} /> Admin/Instructor Invite Code
                 </div>
-                <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.2)', padding: '8px 12px', borderRadius: 6 }}>
+                <div style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between', background: `color-mix(in srgb, var(--theme-background) ${0.2 * 100}%, transparent)`, padding: '8px 12px', borderRadius: 6 }}>
                   <span style={{ fontFamily: 'monospace', fontSize: 14, letterSpacing: 1 }}>{adminInviteCode}</span>
                   <button
                     className={`share-link-row__btn share-link-row__btn--copy ${copiedToken === adminInviteCode ? 'share-link-row__btn--copied' : ''}`}

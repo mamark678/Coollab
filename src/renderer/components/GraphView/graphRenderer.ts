@@ -17,6 +17,26 @@ export function renderGraph(
 ): void {
   if (logicalWidth <= 0 || logicalHeight <= 0) return;
 
+  // Retrieve CSS variables dynamically from the canvas element to support global theming
+  const rootStyle = getComputedStyle(ctx.canvas);
+  const backgroundColor = rootStyle.getPropertyValue('--theme-background').trim() || '#0d0d1a';
+  const surfaceColor = rootStyle.getPropertyValue('--theme-surface').trim() || '#131326';
+  const primaryColor = rootStyle.getPropertyValue('--theme-primary').trim() || '#7c3aed';
+  const secondaryColor = rootStyle.getPropertyValue('--theme-secondary').trim() || '#a78bfa';
+  const borderColor = rootStyle.getPropertyValue('--theme-border').trim() || 'rgba(255,255,255,0.08)';
+  const textPrimaryColor = rootStyle.getPropertyValue('--theme-text-primary').trim() || '#ffffff';
+  const textSecondaryColor = rootStyle.getPropertyValue('--theme-text-secondary').trim() || '#94a3b8';
+
+  const themeColors = {
+    backgroundColor,
+    surfaceColor,
+    primaryColor,
+    secondaryColor,
+    borderColor,
+    textPrimaryColor,
+    textSecondaryColor,
+  };
+
   // Clear any existing transformation — ensure we start from a clean slate
   ctx.setTransform(1, 0, 0, 1, 0, 0);
 
@@ -29,7 +49,7 @@ export function renderGraph(
 
   // 2. Clear and fill background
   ctx.clearRect(0, 0, logicalWidth, logicalHeight);
-  ctx.fillStyle = '#0d0d1a';
+  ctx.fillStyle = backgroundColor;
   ctx.fillRect(0, 0, logicalWidth, logicalHeight);
 
   // 3. Apply pan/zoom on top of DPR scale
@@ -110,19 +130,19 @@ export function renderGraph(
 
     if (isUnresolved) {
       ctx.setLineDash([4, 6]);
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.strokeStyle = hexToRGBA(textPrimaryColor, 0.08);
       ctx.lineWidth = 1;
     } else if (isHighlightedBySelected) {
       ctx.setLineDash([]);
-      ctx.strokeStyle = '#7c3aed';
+      ctx.strokeStyle = primaryColor;
       ctx.lineWidth = lineWidth;
     } else if (isHighlightedByHovered) {
       ctx.setLineDash([]);
-      ctx.strokeStyle = 'rgba(167,139,250,0.7)';
+      ctx.strokeStyle = hexToRGBA(secondaryColor, 0.7);
       ctx.lineWidth = lineWidth;
     } else {
       ctx.setLineDash([]);
-      ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+      ctx.strokeStyle = hexToRGBA(textPrimaryColor, 0.13);
       ctx.lineWidth = lineWidth;
     }
 
@@ -166,42 +186,44 @@ export function renderGraph(
     // Glow effects
     if (node.isActive) {
       ctx.shadowBlur = 18;
-      ctx.shadowColor = 'rgba(124,58,237,0.7)';
+      ctx.shadowColor = hexToRGBA(primaryColor, 0.7);
     } else if (isSelected) {
       ctx.shadowBlur = 14;
-      ctx.shadowColor = 'rgba(124,58,237,0.5)';
+      ctx.shadowColor = hexToRGBA(primaryColor, 0.5);
     } else if (isHovered) {
       ctx.shadowBlur = 10;
-      ctx.shadowColor = 'rgba(167,139,250,0.4)';
+      ctx.shadowColor = hexToRGBA(secondaryColor, 0.4);
     }
 
     ctx.beginPath();
     ctx.arc(node.x, node.y, dynamicRadius, 0, Math.PI * 2);
 
+    const resolvedColor = resolveNodeColor(node.color, themeColors);
+
     // Fill color
     if (isSelected || node.isActive) {
-      ctx.fillStyle = '#7c3aed';
+      ctx.fillStyle = primaryColor;
     } else if (isHovered) {
-      ctx.fillStyle = brighten(node.color, 0.35);
+      ctx.fillStyle = brighten(resolvedColor, 0.35);
     } else if (isConnectedToSelected) {
-      ctx.fillStyle = brighten(node.color, 0.15);
+      ctx.fillStyle = brighten(resolvedColor, 0.15);
     } else {
-      ctx.fillStyle = node.color;
+      ctx.fillStyle = resolvedColor;
     }
     ctx.fill();
 
     // Stroke ring
     if (isSelected) {
-      ctx.strokeStyle = '#a78bfa';
+      ctx.strokeStyle = secondaryColor;
       ctx.lineWidth = 2.5 / state.zoom;
     } else if (isHovered) {
-      ctx.strokeStyle = 'rgba(167,139,250,0.8)';
+      ctx.strokeStyle = hexToRGBA(secondaryColor, 0.8);
       ctx.lineWidth = 2 / state.zoom;
     } else if (node.isActive) {
-      ctx.strokeStyle = 'rgba(167,139,250,0.5)';
+      ctx.strokeStyle = hexToRGBA(secondaryColor, 0.5);
       ctx.lineWidth = 1.5 / state.zoom;
     } else {
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+      ctx.strokeStyle = hexToRGBA(textPrimaryColor, 0.12);
       ctx.lineWidth = 1 / state.zoom;
     }
     ctx.stroke();
@@ -256,18 +278,18 @@ export function renderGraph(
 
       if (isHovered || isSelected) {
         ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
-        ctx.fillStyle = 'rgba(255,255,255,1)';
+        ctx.fillStyle = textPrimaryColor;
         // Text shadow for legibility
         ctx.shadowBlur = 6;
         ctx.shadowColor = 'rgba(0,0,0,0.9)';
       } else if (node.isActive) {
         ctx.font = `600 ${fontSize}px "Inter", sans-serif`;
-        ctx.fillStyle = 'rgba(167,139,250,0.95)';
+        ctx.fillStyle = hexToRGBA(secondaryColor, 0.95);
         ctx.shadowBlur = 4;
         ctx.shadowColor = 'rgba(0,0,0,0.8)';
       } else {
         ctx.font = `${fontSize}px "Inter", sans-serif`;
-        ctx.fillStyle = 'rgba(255,255,255,0.65)';
+        ctx.fillStyle = hexToRGBA(textPrimaryColor, 0.65);
         ctx.shadowBlur = 3;
         ctx.shadowColor = 'rgba(0,0,0,0.7)';
       }
@@ -294,7 +316,7 @@ export function renderGraph(
 
   // ── 7. Minimap — drawn in logical pixel space (DPR scale still active)
   if (state.showMinimap && nodes.length > 0) {
-    renderMinimap(ctx, nodes, edges, state, logicalWidth, logicalHeight);
+    renderMinimap(ctx, nodes, edges, state, logicalWidth, logicalHeight, themeColors);
   }
 }
 
@@ -307,7 +329,16 @@ function renderMinimap(
   edges: GraphEdge[],
   state: GraphViewState,
   canvasW: number,
-  canvasH: number
+  canvasH: number,
+  theme: {
+    backgroundColor: string;
+    surfaceColor: string;
+    primaryColor: string;
+    secondaryColor: string;
+    borderColor: string;
+    textPrimaryColor: string;
+    textSecondaryColor: string;
+  }
 ): void {
   const mmW = 140;
   const mmH = 100;
@@ -336,8 +367,8 @@ function renderMinimap(
 
   // Background
   ctx.save();
-  ctx.fillStyle = 'rgba(10,10,22,0.88)';
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.fillStyle = hexToRGBA(theme.surfaceColor, 0.88);
+  ctx.strokeStyle = hexToRGBA(theme.textPrimaryColor, 0.08);
   ctx.lineWidth = 1;
   roundRect(ctx, mmX, mmY, mmW, mmH, 8);
   ctx.fill();
@@ -354,7 +385,7 @@ function renderMinimap(
     ctx.beginPath();
     ctx.moveTo(sx, sy);
     ctx.lineTo(tx, ty);
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeStyle = hexToRGBA(theme.textPrimaryColor, 0.2);
     ctx.lineWidth = 0.5;
     ctx.stroke();
   }
@@ -366,7 +397,7 @@ function renderMinimap(
     const r = node.isActive ? 3 : node.id === state.selectedNodeId ? 2.5 : 1.5;
     ctx.beginPath();
     ctx.arc(mx, my, r, 0, Math.PI * 2);
-    ctx.fillStyle = node.isActive ? '#7c3aed' : node.id === state.selectedNodeId ? '#a78bfa' : node.color;
+    ctx.fillStyle = node.isActive ? theme.primaryColor : node.id === state.selectedNodeId ? theme.secondaryColor : node.color;
     ctx.fill();
   }
 
@@ -378,7 +409,7 @@ function renderMinimap(
   const vpH = (canvasH / state.zoom) * scale;
 
   ctx.globalAlpha = 0.4;
-  ctx.strokeStyle = '#7c3aed';
+  ctx.strokeStyle = theme.primaryColor;
   ctx.lineWidth = 1;
   ctx.strokeRect(vpX, vpY, vpW, vpH);
   ctx.globalAlpha = 1;
@@ -461,4 +492,42 @@ function brighten(hex: string, amount: number): string {
   const ng = Math.min(255, Math.round(g + (255 - g) * amount));
   const nb = Math.min(255, Math.round(b + (255 - b) * amount));
   return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+}
+
+function hexToRGBA(hex: string, alpha: number): string {
+  const raw = hex.replace('#', '').trim();
+  if (raw.length !== 6) {
+    if (hex.startsWith('rgb') || hex.startsWith('hsl') || hex.startsWith('var')) {
+      return hex;
+    }
+    return `rgba(255, 255, 255, ${alpha})`;
+  }
+  const r = parseInt(raw.substring(0, 2), 16);
+  const g = parseInt(raw.substring(2, 4), 16);
+  const b = parseInt(raw.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+function resolveNodeColor(
+  colorKey: string,
+  theme: {
+    primaryColor: string;
+    secondaryColor: string;
+    textSecondaryColor: string;
+    textPrimaryColor: string;
+  }
+): string {
+  if (colorKey === 'orphan') {
+    return hexToRGBA(theme.textSecondaryColor, 0.4);
+  }
+  if (colorKey === 'tagged') {
+    return theme.secondaryColor;
+  }
+  if (colorKey === 'active') {
+    return theme.primaryColor;
+  }
+  if (colorKey === 'default') {
+    return theme.textSecondaryColor;
+  }
+  return colorKey;
 }

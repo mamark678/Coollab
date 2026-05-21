@@ -1,5 +1,6 @@
 import React, { createContext, useReducer, useEffect, useContext, useCallback } from 'react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 import type { AuthState, AuthAction, AuthContextType } from '../types/auth.types';
 import { FirebaseService } from '../services/firebase';
 import { useAppStore } from '../store/useAppStore';
@@ -29,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   const authStateCallback = useCallback(async (user: any) => {
+    dispatch({ type: 'SET_LOADING', payload: true });
     if (user) {
       if (user.isAnonymous) {
         const isGuestRoute = window.location.hash.includes('/share/') || 
@@ -40,7 +42,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const name = user.displayName || (user.isAnonymous ? 'Guest' : user.email?.split('@')[0]) || 'Unknown';
-      FirebaseService.getInstance().saveUserProfile(user.uid, {
+      
+      // Fetch user profile to get role
+      const firebase = FirebaseService.getInstance();
+      const userRef = doc(firebase.db, 'users', user.uid);
+      const userSnap = await getDoc(userRef);
+      const profileData = userSnap.exists() ? userSnap.data() : null;
+      
+      if (profileData?.role) {
+        useAppStore.getState().setUserRole(profileData.role);
+      } else {
+        useAppStore.getState().setUserRole(null);
+      }
+
+      firebase.saveUserProfile(user.uid, {
         name,
         email: user.email ?? null,
         photoURL: user.photoURL ?? null,

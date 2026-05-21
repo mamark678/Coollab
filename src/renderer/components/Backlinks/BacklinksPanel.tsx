@@ -32,7 +32,7 @@ interface BacklinksPanelProps {
   currentDocTitle: string;
   onNavigateToDoc: (docId: string, title: string) => void;
   onClose: () => void;
-  docType: 'document' | 'canvas' | 'base' | null;
+  docType: 'document' | 'canvas' | 'base' | 'folder' | null;
 }
 
 /**

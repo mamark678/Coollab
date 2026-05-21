@@ -17,12 +17,20 @@ export function useUserProfile(uid?: string) {
     }
 
     setLoading(true);
-    const unsub = FirebaseService.getInstance().listenToUserProfile(targetUid, (data) => {
-      setProfile(data);
+    let unsubscribe: (() => void) | null = null;
+    try {
+      unsubscribe = FirebaseService.getInstance().listenToUserProfile(targetUid, (data) => {
+        setProfile(data);
+        setLoading(false);
+      });
+    } catch (err) {
+      console.error('[useUserProfile] Failed to set up listener:', err);
       setLoading(false);
-    });
+    }
 
-    return () => unsub();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [targetUid]);
 
   return { profile, loading };

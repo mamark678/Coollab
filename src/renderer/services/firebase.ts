@@ -110,6 +110,18 @@ export class FirebaseService {
     setPersistence(this.auth, browserLocalPersistence).catch(err => {
       console.error('[FirebaseService] Persistence error:', err);
     });
+
+    // Add a global error handler for uncaught Firestore errors (FIX 3)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('unhandledrejection', (event) => {
+        if (event.reason?.message?.includes('INTERNAL ASSERTION FAILED')) {
+          console.error('[Firebase] Firestore internal error — reloading...', event.reason);
+          event.preventDefault();
+          // Don't crash the whole app — just log. 
+          // In severe cases, we might want to reload: window.location.reload();
+        }
+      });
+    }
   }
 
   public static getInstance(): FirebaseService {
@@ -547,20 +559,79 @@ export class FirebaseService {
   }
 
   /**
+   * Saves the user's custom dashboard background.
+   */
+  public async saveDashboardBackground(uid: string, base64: string | null): Promise<void> {
+    const userRef = doc(this.db, 'users', uid);
+    await updateDoc(userRef, { dashboardBackground: base64 });
+  }
+
+  /**
+   * Saves the project's custom background.
+   */
+  public async saveProjectBackground(noteId: string, base64: string | null): Promise<void> {
+    const noteRef = doc(this.db, 'notes', noteId);
+    await updateDoc(noteRef, { projectBackground: base64 });
+  }
+
+  /**
    * Users Management
    */
-  public async saveUserProfile(uid: string, data: { 
-    name: string; 
-    email?: string | null; 
-    photoURL?: string | null; 
-    photoBase64?: string | null;
-    lastNameChange?: number | null;
-    createdAt?: number;
-    updatedAt?: number;
-    uid?: string;
-  }): Promise<void> {
+  public async saveUserProfile(uid: string, data: any): Promise<void> {
     const userRef = doc(this.db, 'users', uid);
-    await setDoc(userRef, { updatedAt: Date.now(), ...data }, { merge: true });
+    const existing = await getDoc(userRef);
+    const existingData = existing.exists() ? existing.data() : {};
+    const existingRole = existingData.role;
+
+    // Never downgrade a confirmed role back to null
+    if (existingRole && (data.role === null || data.role === undefined)) {
+      delete data.role;
+    }
+
+    const updatedData = { 
+      ...existingData,
+      ...data, 
+      updatedAt: Date.now() 
+    };
+
+    await setDoc(userRef, updatedData, { merge: true });
+  }
+
+  /**
+   * Creates a default "My Workspace" project for a student.
+   */
+  public async createStudentDefaultWorkspace(uid: string): Promise<void> {
+    try {
+      // Check if user already has a project named "My Workspace"
+      const notesCol = collection(this.db, 'notes');
+      const q = query(notesCol, where("ownerId", "==", uid), where("title", "==", "My Workspace"), where("isProject", "==", true));
+      const snap = await getDocs(q);
+      
+      if (!snap.empty) {
+        console.log('[FirebaseService] "My Workspace" already exists for user:', uid);
+        return;
+      }
+
+      const newProjectId = `project-${Math.random().toString(36).substr(2, 9)}`;
+      const now = Date.now();
+      
+      const projectData: DocumentSchema = {
+        id: newProjectId,
+        title: 'My Workspace',
+        content: null,
+        ownerId: uid,
+        collaborators: [uid],
+        createdAt: now,
+        updatedAt: now,
+        isProject: true,
+        type: 'project'
+      };
+
+      await this.createNote(newProjectId, projectData);
+      console.log('[FirebaseService] Created "My Workspace" for user:', uid);
+    } catch (err) {
+      console.error('[FirebaseService] Failed to create default workspace:', err);
+    }
   }
 
   public async handleGoogleSignInResult(user: any): Promise<void> {
@@ -568,21 +639,37 @@ export class FirebaseService {
     const snap = await getDoc(userRef);
 
     if (!snap.exists()) {
-      const newProfile = {
+      // New user — create profile with null role
+      await setDoc(userRef, {
         uid: user.uid,
         name: user.displayName || 'User',
         email: user.email,
         photoURL: user.photoURL ?? null,
         photoBase64: null,
-        lastNameChange: null,
+        role: null, // Will be set by RoleSelectionModal
         createdAt: Date.now(),
         updatedAt: Date.now()
-      };
-      await setDoc(userRef, newProfile);
+      });
+    } else {
+      // Existing user — ONLY update name/photo/updatedAt, never touch role
+      await setDoc(userRef, {
+        name: user.displayName || snap.data().name,
+        email: user.email,
+        photoURL: user.photoURL ?? snap.data().photoURL,
+        updatedAt: Date.now()
+      }, { merge: true });
     }
   }
 
-  public async getUserProfile(uid: string): Promise<{ name: string; email?: string; photoURL?: string; photoBase64?: string; lastNameChange?: number; createdAt?: number } | null> {
+  public async getUserProfile(uid: string): Promise<{ 
+    name: string; 
+    email?: string; 
+    photoURL?: string; 
+    photoBase64?: string; 
+    lastNameChange?: number; 
+    role?: 'student' | 'instructor' | null;
+    createdAt?: number; 
+  } | null> {
     const userRef = doc(this.db, 'users', uid);
     const snap = await getDoc(userRef);
     return snap.exists() ? snap.data() as any : null;

@@ -36,7 +36,7 @@ export const GuestAppPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a0a4b8' }}>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--theme-text-secondary)' }}>
         Loading document…
       </div>
     );
@@ -48,10 +48,10 @@ export const GuestAppPage: React.FC = () => {
         {/* Guest Top Bar */}
         <div className="app-top-bar" style={{ padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#6dd49e', background: 'rgba(109, 212, 158, 0.1)', padding: '4px 8px', borderRadius: 4, marginRight: 12 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--theme-success)', background: 'color-mix(in_srgb, var(--theme-success) 10%, transparent)', padding: '4px 8px', borderRadius: 4, marginRight: 12 }}>
               COLLABORATING
             </span>
-            <span style={{ fontSize: 16, fontWeight: 600, color: '#e8eaf0' }}>
+            <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--theme-text-primary)' }}>
               {title}
             </span>
           </div>
@@ -62,14 +62,14 @@ export const GuestAppPage: React.FC = () => {
               alignItems: 'center',
               gap: 8,
               padding: '6px 16px',
-              background: 'linear-gradient(135deg, #7c6bf0 0%, #6558d4 100%)',
+              background: 'var(--theme-primary)',
               border: 'none',
               borderRadius: 8,
-              color: '#fff',
+              color: 'var(--theme-on-primary)',
               fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(124, 107, 240, 0.3)',
+              boxShadow: '0 2px 8px color-mix(in_srgb, var(--theme-primary) 30%, transparent)',
             }}
           >
             <LogIn size={14} />
@@ -85,7 +85,7 @@ export const GuestAppPage: React.FC = () => {
               projectId={projectId}
               username={user?.isAnonymous ? 'Guest' : (user?.displayName || 'Guest')}
               userId={user?.uid}
-              color="#7c6bf0"
+              color="var(--theme-primary)"
               title={title}
               onTitleChange={setTitle}
               readOnly={false}

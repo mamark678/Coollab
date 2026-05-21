@@ -4,37 +4,21 @@ import { getUserAvatar } from '../../utils/avatar.utils';
 import { Capacitor } from '@capacitor/core';
 import { X } from 'lucide-react';
 
-export const CollaboratorList: React.FC<CollaboratorListProps> = memo(({ 
-  members, 
-  onKick, 
-  isOwner,
-  currentUserId,
-  onClose
-}) => {
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; userId: string; name: string } | null>(null);
-
-  useEffect(() => {
-    const handleGlobalClick = () => setContextMenu(null);
-    window.addEventListener('click', handleGlobalClick);
-    return () => window.removeEventListener('click', handleGlobalClick);
-  }, []);
-
-  if (!members || members.length === 0) return null;
-
-  const onlineMembers = members.filter(m => m.isOnline);
-  const offlineMembers = members.filter(m => !m.isOnline);
-
 interface CollaboratorItemProps {
   member: any;
   isOwner: boolean;
   currentUserId: string | null;
   onContextMenu: (e: React.MouseEvent, userId: string, name: string) => void;
+  onKick?: (uid: string, name: string) => void;
 }
 
 const CollaboratorItem: React.FC<CollaboratorItemProps> = memo(({
-  member: c, isOwner, currentUserId, onContextMenu
-}) => (
+  member: c, isOwner, currentUserId, onContextMenu, onKick
+}) => {
+  console.log('[CollaboratorItem] isOwner:', isOwner, '| member:', c.name, '| role:', c.role, '| currentUserId:', currentUserId, '| c.id:', c.id);
+  return (
   <div 
+    className="collaborator-item"
     onContextMenu={(e) => onContextMenu(e, c.id, c.name)}
     style={{ 
       display: 'flex', 
@@ -93,41 +77,77 @@ const CollaboratorItem: React.FC<CollaboratorItemProps> = memo(({
         {c.role}
       </div>
     </div>
+    {isOwner && c.id !== currentUserId && c.role !== 'Guest' && (
+      <button
+        onClick={() => onKick?.(c.id, c.name)}
+        style={{
+          background: 'none',
+          border: 'none',
+          color: 'rgba(255,99,99,0.7)',
+          cursor: 'pointer',
+          fontSize: '11px',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          opacity: 0,
+          transition: 'opacity 0.2s',
+        }}
+        className="kick-btn"
+        title={`Remove ${c.name} from project`}
+      >
+        Remove
+      </button>
+    )}
   </div>
-));
+  );
+});
+
+export const CollaboratorList: React.FC<CollaboratorListProps> = memo(({ 
+  members, 
+  onKick, 
+  isOwner,
+  currentUserId,
+  onClose
+}) => {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; userId: string; name: string } | null>(null);
+
+  // BUG 1 FIX: Deduplicate members by id
+  const uniqueMembers = Array.from(
+    new Map(members.map(m => [m.id, m])).values()
+  );
+
+  useEffect(() => {
+    const handleGlobalClick = () => setContextMenu(null);
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+
+  // BUG 2 FIX: Log onKick prop to verify it's being passed
+  console.log('[CollaboratorList] onKick prop:', typeof onKick, onKick);
+
+  // Derive isOwner from members data - more reliable than prop chain
+  const derivedIsOwner = uniqueMembers.some(m => m.id === currentUserId && m.role === 'Owner');
+  const effectiveIsOwner = isOwner || derivedIsOwner;
+
+  if (!uniqueMembers || uniqueMembers.length === 0) return null;
+
+  const onlineMembers = uniqueMembers.filter(m => m.isOnline);
+  const offlineMembers = uniqueMembers.filter(m => !m.isOnline);
 
   const handleMemberContextMenu = (e: React.MouseEvent, userId: string, name: string) => {
-    const member = members.find(m => m.id === userId);
-    if (!isOwner || userId === currentUserId || member?.role === 'Guest') return;
+    const member = uniqueMembers.find(m => m.id === userId);
+    if (!effectiveIsOwner || userId === currentUserId || member?.role === 'Guest') return;
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, userId, name });
   };
 
-  const isNative = Capacitor.isNativePlatform();
-
   return (
-    <div style={{
-      width: isNative ? '100%' : '240px',
-      background: 'var(--surface-mantle)',
-      borderLeft: '1px solid var(--border-primary)',
-      padding: '20px 16px',
-      position: isNative ? 'absolute' : 'relative',
-      right: 0,
-      top: 0,
-      height: '100%',
-      overflowY: 'auto',
-      zIndex: isNative ? 100 : 1,
-      transform: 'translateZ(0)',
-      willChange: 'transform'
-    }}>
-      {isNative && (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Collaborators</h2>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '4px', cursor: 'pointer' }}>
-            <X size={20} />
-          </button>
-        </div>
-      )}
+    <div className="collaborator-list-panel">
+      <div className="collaborator-list-panel__header" style={{ display: 'none', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--text-primary)' }}>Collaborators</h2>
+        <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--text-primary)', padding: '4px', cursor: 'pointer' }}>
+          <X size={20} />
+        </button>
+      </div>
 
       {onlineMembers.length > 0 && (
         <>
@@ -146,9 +166,10 @@ const CollaboratorItem: React.FC<CollaboratorItemProps> = memo(({
               <CollaboratorItem 
                 key={m.id} 
                 member={m} 
-                isOwner={isOwner ?? false} 
+                isOwner={effectiveIsOwner} 
                 currentUserId={currentUserId ?? null} 
                 onContextMenu={handleMemberContextMenu} 
+                onKick={onKick}
               />
             ))}
           </div>
@@ -176,9 +197,10 @@ const CollaboratorItem: React.FC<CollaboratorItemProps> = memo(({
               <CollaboratorItem 
                 key={m.id} 
                 member={m} 
-                isOwner={isOwner ?? false} 
+                isOwner={effectiveIsOwner} 
                 currentUserId={currentUserId ?? null} 
                 onContextMenu={handleMemberContextMenu} 
+                onKick={onKick}
               />
             ))}
           </div>
@@ -191,7 +213,7 @@ const CollaboratorItem: React.FC<CollaboratorItemProps> = memo(({
           position: 'fixed',
           top: contextMenu.y,
           left: contextMenu.x,
-          background: '#0a0a14',
+          background: 'var(--theme-background)',
           border: '1px solid #1e1e3f',
           borderRadius: '6px',
           padding: '4px',
@@ -199,6 +221,39 @@ const CollaboratorItem: React.FC<CollaboratorItemProps> = memo(({
           boxShadow: '0 8px 16px rgba(0,0,0,0.5)',
           minWidth: '160px'
         }}>
+          {/* User details */}
+          <div style={{
+            padding: '8px 12px',
+            borderBottom: '1px  solid var(--theme-border)',
+            marginBottom: '4px'
+          }}>
+            <div style={{ fontSize: '11px', color: 'var(--theme-text-secondary)', marginBottom: '2px' }}>USER ID</div>
+            <div style={{
+              fontSize: '10px',
+              color: 'var(--theme-text-secondary)',
+              fontFamily: 'monospace',
+              wordBreak: 'break-all',
+              userSelect: 'text'
+            }}>
+              {contextMenu.userId}
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(contextMenu.userId);
+              }}
+              style={{
+                marginTop: '4px',
+                fontSize: '10px',
+                color: 'var(--theme-primary)',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                padding: 0
+              }}
+            >
+              Copy UID
+            </button>
+          </div>
           <button 
             onClick={() => onKick?.(contextMenu.userId, contextMenu.name)}
             style={{
@@ -223,3 +278,4 @@ const CollaboratorItem: React.FC<CollaboratorItemProps> = memo(({
     </div>
   );
 });
+

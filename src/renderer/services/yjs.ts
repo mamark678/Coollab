@@ -52,11 +52,13 @@ export class YjsService {
       this.persistence = null
     }
 
-    // 2. Real-time P2P sync — using public community signaling servers for internet P2P
     this.provider = new WebrtcProvider(config.roomName, this.doc, {
       signaling: [
         'wss://y-webrtc-cw7h.onrender.com',
-        'wss://y-webrtc.fly.dev'
+        'wss://y-webrtc.fly.dev',
+        'wss://signaling.yjs.dev',
+        'wss://y-webrtc-signaling-eu.herokuapp.com',
+        'wss://y-webrtc-signaling-us.herokuapp.com'
       ],
     })
 
@@ -74,6 +76,10 @@ export class YjsService {
     });
 
     console.log(`[Yjs] Initialized room: "${config.roomName}" with signaling:`, this.provider.signalingUrls)
+  }
+
+  public isInitialized(): boolean {
+    return this.doc !== null && this.doc !== undefined;
   }
 
   public getDoc(): Y.Doc {
@@ -124,7 +130,10 @@ export class YjsService {
       try {
         const dbs = await indexedDB.databases();
         for (const db of dbs) {
-          if (db.name) {
+          if (db.name &&
+              !db.name.includes('firebase') &&
+              !db.name.includes('firestore') &&
+              !db.name.includes('Firebase')) {
             console.log(`[YjsService] Deleting database: ${db.name}`);
             indexedDB.deleteDatabase(db.name);
           }
